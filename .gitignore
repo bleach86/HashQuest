@@ -8,6 +8,8 @@
 
 /.mypy_cache/
 
+Dioxus.yaml
+
 /.vscode/
 
 *.br
