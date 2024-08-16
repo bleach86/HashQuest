@@ -16,7 +16,7 @@ asset_dir = "assets"
 [web.app]
 
 # HTML title tag content
-title = "hash-quest"
+title = "HashQuest"
 
 [web.watcher]
 
