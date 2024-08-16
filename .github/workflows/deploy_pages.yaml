@@ -1,0 +1,59 @@
+name: Build and Deploy HashQuest
+
+on:
+  push:
+    branches:
+      - main
+  pull_request:
+    branches:
+      - main
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+
+    steps:
+    - uses: actions/checkout@v3
+
+    - name: Set up Rust toolchain
+      uses: actions-rs/toolchain@v1
+      with:
+        toolchain: stable
+        profile: minimal
+        target: wasm32-unknown-unknown
+        override: true
+
+    - name: Cache cargo registry
+      uses: actions/cache@v3
+      with:
+        path: |
+          ~/.cargo/registry
+          ~/.cargo/git
+        key: ${{ runner.os }}-cargo-registry-${{ hashFiles('**/Cargo.lock') }}
+        restore-keys: |
+          ${{ runner.os }}-cargo-registry-
+
+    - name: Cache cargo build
+      uses: actions/cache@v3
+      with:
+        path: |
+          target
+        key: ${{ runner.os }}-cargo-build-stable-release-${{ hashFiles('**/Cargo.lock') }}
+        restore-keys: |
+          ${{ runner.os }}-cargo-build-stable-release-
+
+    - name: Install Dioxus-CLI
+      run: cargo install dioxus-cli
+
+
+    - name: Build Project 🎁
+      run: |
+        dx build --release
+        cp ./dist/index.html ./dist/404.html
+
+    - name: Deploy Project 🚀
+      uses: JamesIves/github-pages-deploy-action@v4
+      with:
+        branch: main
+        folder: ./dist
+        clean: false
