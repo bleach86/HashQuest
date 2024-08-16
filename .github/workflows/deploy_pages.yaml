@@ -56,11 +56,33 @@ jobs:
         dx build --release
         cp ./dist/index.html ./dist/404.html
 
-    - name: Deploy Project 🚀
-      uses: JamesIves/github-pages-deploy-action@v4
-      # Sets permissions of the GITHUB_TOKEN to allow deployment to GitHub Pages
+    - name: Upload GitHub Pages artifact
+      uses: actions/upload-pages-artifact@v3.0.1
       with:
-        branch: main
-        folder: ./dist
-        clean: false
-        token: ${{ secrets.GITHUB_TOKEN }}
+        # Artifact name
+        name: github-pages
+        # Path of the directory containing the static assets.
+        path: ./dist
+
+  deploy:
+    # Add a dependency to the build job
+    needs: build
+
+    # Grant GITHUB_TOKEN the permissions required to make a Pages deployment
+    permissions:
+      pages: write      # to deploy to Pages
+      id-token: write   # to verify the deployment originates from an appropriate source
+
+    # Deploy to the github-pages environment
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+
+    # Specify runner + deployment step
+    runs-on: ubuntu-latest
+    steps:
+      - name: Deploy to GitHub Pages
+        id: deployment
+        uses: actions/deploy-pages@v4
+
+        
