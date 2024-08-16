@@ -10,7 +10,8 @@ on:
 
 permissions:
   contents: read
-  pages: write 
+  pages: write
+  id-token: write 
 
 jobs:
   build:
@@ -57,6 +58,7 @@ jobs:
 
     - name: Deploy Project 🚀
       uses: JamesIves/github-pages-deploy-action@v4
+      # Sets permissions of the GITHUB_TOKEN to allow deployment to GitHub Pages
       with:
         branch: main
         folder: ./dist
