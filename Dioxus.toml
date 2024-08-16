@@ -14,6 +14,7 @@ out_dir = "dist"
 asset_dir = "assets"
 
 [web.app]
+base_path = "bleach86"
 
 # HTML title tag content
 title = "HashQuest"
