@@ -8,7 +8,7 @@
 
 /.mypy_cache/
 
-Dioxus.yaml
+Dioxus.toml
 
 /.vscode/
 
