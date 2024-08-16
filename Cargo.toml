@@ -1,0 +1,53 @@
+[package]
+name = "hash-quest"
+version = "0.1.0"
+authors = ["bleach86 <14421739+bleach86@users.noreply.github.com>"]
+edition = "2021"
+
+# See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
+
+[dependencies]
+
+dioxus = { version = "0.5.0", features = ["web", "router"] }
+
+# Debug
+dioxus-logger = "0.5.1"
+dioxus-charts = "0.2.0"
+
+futures = "0.3.30"
+manganis = "0.2.2"
+reqwest = { version = "0.12.5", features = ["json"] }
+serde = { version = "1.0.204", features = ["derive"] }
+tracing-wasm = "0.2.1"
+wasm-bindgen = "0.2.92"
+wasm-bindgen-futures = "0.4.42"
+serde-wasm-bindgen = "0.6.5"
+console_error_panic_hook = "0.1.7"
+web-sys = { version = "0.3.69", features = [
+    "Crypto",
+    "SubtleCrypto",
+    "IdbFactory",
+    "Window",
+    "IdbOpenDbRequest",
+    "HtmlTableRowElement",
+    "HtmlCanvasElement",
+    "CanvasRenderingContext2d",
+] }
+js-sys = "0.3.69"
+
+indexed_db_futures = "0.5.0"
+
+gloo-timers = { version = "0.3.0", features = ["futures"] }
+gloo-utils = "0.2.0"
+gloo-worker = { version = "0.5.0", features = ["futures"] }
+gloo-net = { version = "0.6.0", features = ["http"] }
+
+
+[profile.release]
+opt-level = "z"
+debug = false
+lto = true
+codegen-units = 1
+panic = "abort"
+strip = true
+incremental = false
