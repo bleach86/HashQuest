@@ -1,9 +1,8 @@
+#[allow(dead_code)]
 use dioxus::prelude::*;
-use dioxus_logger::tracing::info;
 use gloo_utils::window;
 use serde::{Deserialize, Serialize};
 use std::collections::VecDeque;
-use std::f32::MIN;
 use std::ops::Range;
 use wasm_bindgen::JsCast;
 

@@ -1,4 +1,3 @@
-use dioxus_logger::tracing::info;
 use gloo_utils::window;
 use serde::{Deserialize, Serialize};
 use wasm_bindgen::JsCast;

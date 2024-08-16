@@ -1,12 +1,9 @@
 #![allow(non_snake_case)]
-
-use dioxus::html::details;
 use dioxus::prelude::*;
 use dioxus_charts::LineChart;
 use dioxus_logger::tracing::{info, Level};
 use gloo_timers::future::TimeoutFuture;
 use gloo_utils::window;
-use serde::{Deserialize, Serialize};
 use wasm_bindgen::JsCast;
 use wasm_bindgen::JsValue;
 
@@ -2356,7 +2353,7 @@ async fn recover_game_state(
     let mut did_catchup = false;
 
     let game_state_clone = game_state.clone();
-    let mut market_catchup = use_signal(|| game_state_clone.market);
+    let market_catchup = use_signal(|| game_state_clone.market);
     let mut series_catchup = use_signal(|| game_state_clone.series);
     let mut series_labels_catchup = use_signal(|| game_state_clone.series_labels);
     let mut labels_catchup = use_signal(|| game_state_clone.labels);
