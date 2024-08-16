@@ -57,3 +57,4 @@ jobs:
         branch: main
         folder: ./dist
         clean: false
+        token: ${{ secrets.GITHUB_TOKEN }}
