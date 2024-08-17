@@ -57,7 +57,12 @@ jobs:
           ${{ runner.os }}-
 
     - name: Install Dioxus-CLI
-      run: cargo install dioxus-cli
+      run: |
+        if ! command -v dx &> /dev/null; then
+          cargo install dioxus-cli
+        else
+          echo "Dioxus-CLI is already installed"
+        fi
 
 
     - name: Build Project 🎁
