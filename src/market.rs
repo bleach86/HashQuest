@@ -1,5 +1,6 @@
 #[allow(dead_code)]
 use dioxus::prelude::*;
+use dioxus_logger::tracing::info;
 use gloo_utils::window;
 use serde::{Deserialize, Serialize};
 use std::collections::VecDeque;
@@ -812,17 +813,19 @@ impl CryptoCoin {
     pub fn get_share_cooldown_ticks(&self) -> i64 {
         let rig_lvl = MINING_RIG().get_level();
 
-        match rig_lvl {
-            1..=5 => 8 * 20,
-            6..=10 => 7 * 20,
-            11..=15 => 6 * 20,
-            16..=20 => 5 * 20,
-            21..=25 => 4 * 20,
-            26..=30 => 3 * 20,
-            31..=35 => 2 * 20,
-            36..=40 => 1 * 20,
+        let ticks = match rig_lvl {
+            1..=5 => 8 * (20 - rig_lvl),
+            6..=10 => 7 * (20 - (rig_lvl - 5)),
+            11..=15 => 6 * (20 - (rig_lvl - 10)),
+            16..=20 => 5 * (20 - (rig_lvl - 15)),
+            21..=25 => 4 * (20 - (rig_lvl - 20)),
+            26..=30 => 3 * (20 - (rig_lvl - 25)),
+            31..=35 => 2 * (20 - (rig_lvl - 30)),
+            36..=40 => 1 * (20 - (rig_lvl - 35)),
             _ => 0,
-        }
+        };
+
+        ticks as i64
     }
 
     pub fn set_share_cooldown(&mut self) {
@@ -1164,7 +1167,7 @@ impl Market {
                     self.bank.deposit(protection_value);
 
                     let msg = format!(
-                        "DerpFi Rug protection activated for {}, {} coins sold for {}",
+                        "DerpFi Rug protection activated for {}, {} coins sold for ${}",
                         coin.name, protected_amount, protection_value
                     );
                     command_line_output(&msg);
