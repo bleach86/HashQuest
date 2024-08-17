@@ -1002,8 +1002,8 @@ pub fn RigMiningTab(selected_tab: Signal<String>) -> Element {
 
                         match refill_time {
                             Some(refill_time) => {
-                                let refill_time = (refill_time / 20) + 1;
-                                format!("Power refill in {}s", refill_time)
+                                let refill_time = refill_time as f32 / 20.0;
+                                format!("Power refill in {:.1}s", refill_time)
                             }
                             None => "".to_string(),
                         }
