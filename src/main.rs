@@ -293,7 +293,9 @@ pub fn HeaderBelow() -> Element {
     };
 
     let get_rug_tab_class = {
-        if MARKET().bank.balance > MINING_RIG().get_rug_protection_upgrade_cost() as f32 {
+        if MARKET().bank.balance > MINING_RIG().get_rug_protection_upgrade_cost() as f32
+            && MINING_RIG().get_rug_protection_level() < 65
+        {
             "rig-tab upgradeable"
         } else {
             "rig-tab"
@@ -435,7 +437,8 @@ pub fn RigRugProtectionTab(selected_tab: Signal<String>) -> Element {
     let rug_protection_cost = MINING_RIG().get_rug_protection_upgrade_cost();
 
     let rug_protection_can_upgrade = {
-        if MARKET().bank.balance >= rug_protection_cost as f32 {
+        let rug_protec_lvl = MINING_RIG().get_rug_protection_level();
+        if MARKET().bank.balance >= rug_protection_cost as f32 && rug_protec_lvl < 65 {
             false
         } else {
             true
