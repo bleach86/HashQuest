@@ -654,7 +654,7 @@ impl AsicSlot {
         if !self.active {
             return 0;
         }
-        200 * self.amount
+        125 * self.amount
     }
 }
 
@@ -689,13 +689,13 @@ impl GpuSlot {
         if !self.active {
             return 0;
         }
-        150 * self.amount
+        125 * self.amount
     }
     pub fn get_hash_rate(&self) -> u32 {
         if !self.active {
             return 0;
         }
-        75 * self.amount
+        40 * self.amount
     }
 }
 
