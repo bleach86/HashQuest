@@ -380,8 +380,9 @@ impl MiningRig {
 
     fn get_power_upgrade_amount(&self) -> f32 {
         match self.level {
-            1..=5 => 1000.0,
-            _ => 500.0,
+            1..=5 => 500.0,
+            6..=10 => 750.0,
+            _ => 1000.0,
         }
     }
 
