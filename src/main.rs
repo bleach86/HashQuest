@@ -973,10 +973,7 @@ pub fn RigMiningTab(selected_tab: Signal<String>) -> Element {
                 };
 
                 match coin {
-                    Some(coin) => (
-                        coin.get_share_cooldown(),
-                        coin.get_share_cooldown_seconds() + 1.0,
-                    ),
+                    Some(coin) => (coin.get_share_cooldown(), coin.get_share_cooldown_seconds()),
                     None => (0, 0.0),
                 }
             }
