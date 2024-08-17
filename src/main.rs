@@ -975,12 +975,12 @@ pub fn RigMiningTab(selected_tab: Signal<String>) -> Element {
                 match coin {
                     Some(coin) => (
                         coin.get_share_cooldown(),
-                        coin.get_share_cooldown_seconds() + 1,
+                        coin.get_share_cooldown_seconds() + 1.0,
                     ),
-                    None => (0, 0),
+                    None => (0, 0.0),
                 }
             }
-            None => (0, 0),
+            None => (0, 0.0),
         }
     };
 
@@ -989,8 +989,8 @@ pub fn RigMiningTab(selected_tab: Signal<String>) -> Element {
             p {style: "font-size: medium;float:right;", class: "{class_from_name(selected_coin_name)} selected-name", "{selected_coin_name}" }
             h4 { "Share Progress" }
             ProgressBar { progress_id: "share-progress".to_string(), progress_message: if share_cooldown_details.0 != 0 {
-                    let cooldown_time = share_cooldown_details.1.to_string();
-                    format!("Cooldown: {}s", cooldown_time)
+                    let cooldown_time = share_cooldown_details.1;
+                    format!("Cooldown: {:.1}s", cooldown_time)
                 } else {
                     "".to_string()
                 }

@@ -1,6 +1,5 @@
-#[allow(dead_code)]
+#![allow(dead_code)]
 use dioxus::prelude::*;
-use dioxus_logger::tracing::info;
 use gloo_utils::window;
 use serde::{Deserialize, Serialize};
 use std::collections::VecDeque;
@@ -806,8 +805,8 @@ impl CryptoCoin {
         self.share_cooldown
     }
 
-    pub fn get_share_cooldown_seconds(&self) -> i64 {
-        self.share_cooldown / 20
+    pub fn get_share_cooldown_seconds(&self) -> f32 {
+        self.share_cooldown as f32 / 20.0
     }
 
     pub fn get_share_cooldown_ticks(&self) -> i64 {
