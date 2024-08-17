@@ -1,3 +1,4 @@
+#![allow(dead_code)]
 use gloo_utils::window;
 use serde::{Deserialize, Serialize};
 use wasm_bindgen::JsCast;
