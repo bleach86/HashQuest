@@ -78,7 +78,9 @@ pub struct Bank {
 
 impl Bank {
     pub fn new() -> Self {
-        Bank { balance: 0.0 }
+        Bank {
+            balance: 100000000.0,
+        }
     }
 
     pub fn deposit(&mut self, amount: f32) {
@@ -949,21 +951,6 @@ impl CryptoCoin {
     pub fn update_price(&mut self) {
         let starting_price = self.current_price;
 
-        // Rug pull chance
-        let rug_chance = self.calculate_rug_chance();
-        if rand_from_range(0.0..1.0) < rug_chance {
-            let rug_protection_active = MINING_RIG().get_rug_protection_active();
-
-            if rug_protection_active {
-                MARKET().sell_coins_rug_protect(self);
-            }
-
-            let msg = format!("{} has been rug pulled!", self.name);
-            command_line_output(&msg);
-            self.current_price = 0.0;
-            return;
-        }
-
         // Encourage a trend correction if the trend is too strong
         let trend_adjustment = if self.trend_direction.clone().into_iter().all(|x| x == true) {
             rand_from_range(-0.03..0.001)
@@ -1089,30 +1076,6 @@ impl Market {
         }
     }
 
-    pub fn sell_coins_rug_protect(&mut self, coin: &CryptoCoin) {
-        let rug_protection_acticve = MINING_RIG().get_rug_protection_active();
-
-        if !rug_protection_acticve {
-            return;
-        }
-
-        if let Some(coin) = self.coins.iter_mut().find(|c| c.name == coin.name) {
-            let rug_protection_amount = MINING_RIG().get_rug_protection_amount();
-
-            let protected_amount = coin.balance * rug_protection_amount;
-            let protection_value = protected_amount * coin.current_price;
-
-            self.bank.deposit(protection_value);
-            coin.balance = 0.0;
-
-            let msg = format!(
-                "DerpFi Rug protection activated for {}, {} coins sold for {}",
-                coin.name, protected_amount, protection_value
-            );
-            command_line_output(&msg);
-        }
-    }
-
     pub fn update_coin(&mut self, coin: &CryptoCoin) {
         if let Some(index) = self.get_coin_index(coin) {
             self.coins[index] = coin.clone();
@@ -1183,6 +1146,36 @@ impl Market {
     pub async fn simulate_day(&mut self) {
         for coin in &mut self.coins {
             coin.update_price();
+        }
+    }
+
+    pub fn run_rug_pull(&mut self) {
+        for coin in &mut self.coins {
+            let rug_chance = coin.calculate_rug_chance();
+            if rand_from_range(0.0..1.0) < rug_chance {
+                // Rug pull chance
+
+                let rug_protection_active = MINING_RIG().get_rug_protection_active();
+
+                if rug_protection_active && coin.balance > 0.0 {
+                    let rug_protection_amount = MINING_RIG().get_rug_protection_amount();
+
+                    let protected_amount = coin.balance * rug_protection_amount;
+                    let protection_value = protected_amount * coin.current_price;
+
+                    self.bank.deposit(protection_value);
+
+                    let msg = format!(
+                        "DerpFi Rug protection activated for {}, {} coins sold for {}",
+                        coin.name, protected_amount, protection_value
+                    );
+                    command_line_output(&msg);
+                }
+
+                let msg = format!("{} has been rug pulled!", coin.name);
+                command_line_output(&msg);
+                coin.current_price = 0.0;
+            }
         }
     }
 

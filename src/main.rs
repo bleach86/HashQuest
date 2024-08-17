@@ -2271,6 +2271,7 @@ async fn game_loop(
             let rig_lvl = MINING_RIG().level;
             cull_market(series_labels, series, rig_lvl);
             run_sim_one_day(series, labels).await;
+            MARKET.write().run_rug_pull();
             MARKET.write().set_profit_factor();
             iter = 0;
         }
