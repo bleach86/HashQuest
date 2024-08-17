@@ -937,7 +937,7 @@ impl CryptoCoin {
                 self.shares -= self.shares_per_block as f32;
 
                 // 25% bonus for completing a block
-                self.balance += self.block_reward * 1.25;
+                self.balance += self.block_reward * 0.25;
             }
         }
     }
