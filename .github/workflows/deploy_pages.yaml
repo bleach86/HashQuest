@@ -47,6 +47,15 @@ jobs:
         restore-keys: |
           ${{ runner.os }}-cargo-build-stable-release-
 
+    - name: Cache Dioxus-CLI
+      uses: actions/cache@v3
+      with:
+        path: ~/.cargo/bin/dx
+        key: ${{ runner.os }}-dioxus-cli-${{ hashFiles('**/Cargo.toml') }}
+        restore-keys: |
+          ${{ runner.os }}-dioxus-cli-
+          ${{ runner.os }}-
+
     - name: Install Dioxus-CLI
       run: cargo install dioxus-cli
 
