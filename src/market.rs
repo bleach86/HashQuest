@@ -78,7 +78,9 @@ pub struct Bank {
 
 impl Bank {
     pub fn new() -> Self {
-        Bank { balance: 0.0 }
+        Bank {
+            balance: 10000000.0,
+        }
     }
 
     pub fn deposit(&mut self, amount: f64) {
@@ -522,7 +524,7 @@ impl MiningRig {
     pub fn get_rig_upgrade_cost(&self) -> f64 {
         match self.level {
             1..=5 => 10.0 + (self.level - 1) as f64 * 20.0,
-            6..=10 => 70.0 + (self.level - 6) as f64 * 60.0,
+            6..=10 => 90.0 + (self.level - 6) as f64 * 60.0,
             11..=15 => 350.0 + (self.level - 11) as f64 * 150.0,
             16..=20 => 1_000.0 + (self.level - 16) as f64 * 300.0,
             21..=25 => 2_600.0 + (self.level - 21) as f64 * 500.0,
