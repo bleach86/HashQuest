@@ -240,7 +240,7 @@ pub fn HeaderBelow() -> Element {
 
     let get_details_tab_class = {
         let can_upgrade_rig = {
-            if MARKET().bank.balance > MINING_RIG().get_rig_upgrade_cost() as f32 {
+            if MARKET().bank.balance > MINING_RIG().get_rig_upgrade_cost() as f64 {
                 true
             } else {
                 false
@@ -248,7 +248,7 @@ pub fn HeaderBelow() -> Element {
         };
 
         let can_upgrade_auto_fill = {
-            if MARKET().bank.balance > MINING_RIG().get_auto_power_fill_upgrade_cost() as f32 {
+            if MARKET().bank.balance > MINING_RIG().get_auto_power_fill_upgrade_cost() as f64 {
                 true
             } else {
                 false
@@ -263,7 +263,7 @@ pub fn HeaderBelow() -> Element {
     };
 
     let get_cpu_tab_class = {
-        if MARKET().bank.balance > MINING_RIG().get_cpu_upgrade_cost() as f32
+        if MARKET().bank.balance > MINING_RIG().get_cpu_upgrade_cost() as f64
             && MINING_RIG().get_cpu_level() < 5
         {
             "rig-tab upgradeable"
@@ -273,7 +273,7 @@ pub fn HeaderBelow() -> Element {
     };
 
     let get_gpu_tab_class = {
-        if (MARKET().bank.balance >= MINING_RIG().get_gpu_upgrade_cost() as f32)
+        if (MARKET().bank.balance >= MINING_RIG().get_gpu_upgrade_cost() as f64)
             && MINING_RIG().get_filled_gpu_slots() < MINING_RIG().get_max_gpu_slots()
         {
             "rig-tab upgradeable"
@@ -283,7 +283,7 @@ pub fn HeaderBelow() -> Element {
     };
 
     let get_asic_tab_class = {
-        if (MARKET().bank.balance >= MINING_RIG().get_asic_upgrade_cost() as f32)
+        if (MARKET().bank.balance >= MINING_RIG().get_asic_upgrade_cost() as f64)
             && MINING_RIG().get_filled_asic_slots() < MINING_RIG().get_max_asic_slots()
         {
             "rig-tab upgradeable"
@@ -293,7 +293,7 @@ pub fn HeaderBelow() -> Element {
     };
 
     let get_rug_tab_class = {
-        if MARKET().bank.balance > MINING_RIG().get_rug_protection_upgrade_cost() as f32
+        if MARKET().bank.balance > MINING_RIG().get_rug_protection_upgrade_cost() as f64
             && MINING_RIG().get_rug_protection_level() < 65
         {
             "rig-tab upgradeable"
@@ -438,7 +438,7 @@ pub fn RigRugProtectionTab(selected_tab: Signal<String>) -> Element {
 
     let rug_protection_can_upgrade = {
         let rug_protec_lvl = MINING_RIG().get_rug_protection_level();
-        if MARKET().bank.balance >= rug_protection_cost as f32 && rug_protec_lvl < 65 {
+        if MARKET().bank.balance >= rug_protection_cost as f64 && rug_protec_lvl < 65 {
             false
         } else {
             true
@@ -456,7 +456,7 @@ pub fn RigRugProtectionTab(selected_tab: Signal<String>) -> Element {
     let rug_protection_active = MINING_RIG().get_rug_protection_active();
 
     let do_rug_protection_upgrade = move |_| {
-        let cost = rug_protection_cost as f32;
+        let cost = rug_protection_cost as f64;
 
         if MARKET.write().bank.withdraw(cost) {
             MINING_RIG.write().upgrade_rug_protection();
@@ -480,11 +480,11 @@ pub fn RigRugProtectionTab(selected_tab: Signal<String>) -> Element {
                 style: "justify-content: space-between;",
                 div {
                     h4 { "DerpFi Rug Protection" }
-                    p { "Rug Protection Level: {format_chart_price(MINING_RIG().get_rug_protection_level() as f32, 2)}" }
+                    p { "Rug Protection Level: {format_chart_price(MINING_RIG().get_rug_protection_level(), 2)}" }
                     p { "Global Share Cooldown Eleminated: {!MINING_RIG().get_global_share_cooldown()}" }
                     p { "Amount Rug Protected: {format_chart_price(MINING_RIG().get_rug_protection_amount() * 100.0, 2)}%" }
                     br {}
-                    p { "Rug Protection Upgrade Cost: ${format_chart_price(rug_protection_cost as f32, 2)}" }
+                    p { "Rug Protection Upgrade Cost: ${format_chart_price(rug_protection_cost, 2)}" }
                 }
             }
         }
@@ -505,7 +505,7 @@ pub fn RigRugProtectionTab(selected_tab: Signal<String>) -> Element {
 pub fn RigAsicTab(selected_tab: Signal<String>) -> Element {
     let upgrade_asic = {
         move |_| {
-            let cost = MINING_RIG().get_asic_upgrade_cost() as f32;
+            let cost = MINING_RIG().get_asic_upgrade_cost() as f64;
 
             if MARKET.write().bank.withdraw(cost) {
                 MINING_RIG.write().upgrade_asic();
@@ -520,7 +520,7 @@ pub fn RigAsicTab(selected_tab: Signal<String>) -> Element {
     };
 
     let upgrade_available = {
-        if (MARKET().bank.balance < MINING_RIG().get_asic_upgrade_cost() as f32)
+        if (MARKET().bank.balance < MINING_RIG().get_asic_upgrade_cost() as f64)
             || MINING_RIG().get_filled_asic_slots() >= MINING_RIG().get_max_asic_slots()
         {
             true
@@ -565,7 +565,7 @@ pub fn RigAsicTab(selected_tab: Signal<String>) -> Element {
                 div {
                     h4 { "ASIC Upgrade" }
                     br {}
-                    p { "Upgrade Cost: ${format_chart_price(MINING_RIG().get_asic_upgrade_cost() as f32, 2)}" }
+                    p { "Upgrade Cost: ${format_chart_price(MINING_RIG().get_asic_upgrade_cost(), 2)}" }
                 }
             }
         }
@@ -585,7 +585,7 @@ pub fn RigAsicTab(selected_tab: Signal<String>) -> Element {
 pub fn RigGPUTab(selected_tab: Signal<String>) -> Element {
     let upgrade_gpu = {
         move |_| {
-            let cost = MINING_RIG().get_gpu_upgrade_cost() as f32;
+            let cost = MINING_RIG().get_gpu_upgrade_cost() as f64;
 
             if MARKET.write().bank.withdraw(cost) {
                 MINING_RIG.write().upgrade_gpu();
@@ -600,7 +600,7 @@ pub fn RigGPUTab(selected_tab: Signal<String>) -> Element {
     };
 
     let upgrade_available = {
-        if (MARKET().bank.balance < MINING_RIG().get_gpu_upgrade_cost() as f32)
+        if (MARKET().bank.balance < MINING_RIG().get_gpu_upgrade_cost() as f64)
             || MINING_RIG().get_filled_gpu_slots() >= MINING_RIG().get_max_gpu_slots()
         {
             true
@@ -645,7 +645,7 @@ pub fn RigGPUTab(selected_tab: Signal<String>) -> Element {
                 div {
                     h4 { "GPU Upgrade" }
                     br {}
-                    p { "Upgrade Cost: ${format_chart_price(MINING_RIG().get_gpu_upgrade_cost() as f32, 2)}" }
+                    p { "Upgrade Cost: ${format_chart_price(MINING_RIG().get_gpu_upgrade_cost(), 2)}" }
                 }
             }
         }
@@ -686,7 +686,7 @@ pub fn RigCPUTab(selected_tab: Signal<String>) -> Element {
     };
 
     let upgrade_available = {
-        if (MARKET().bank.balance < MINING_RIG().get_cpu_upgrade_cost() as f32)
+        if (MARKET().bank.balance < MINING_RIG().get_cpu_upgrade_cost() as f64)
             || MINING_RIG().get_cpu_level() >= 5
         {
             true
@@ -711,7 +711,7 @@ pub fn RigCPUTab(selected_tab: Signal<String>) -> Element {
                     br {}
 
                     if MINING_RIG().get_cpu_level() < 5 {
-                        p { "Upgrade Cost: ${format_chart_price(MINING_RIG().get_cpu_upgrade_cost() as f32, 2)}" }
+                        p { "Upgrade Cost: ${format_chart_price(MINING_RIG().get_cpu_upgrade_cost(), 2)}" }
                     } else {
                         p { "Max Level" }
                     }
@@ -724,7 +724,7 @@ pub fn RigCPUTab(selected_tab: Signal<String>) -> Element {
                 class: "",
                 disabled: upgrade_available,
                 onclick: |_| {
-                    let cost = MINING_RIG().get_cpu_upgrade_cost() as f32;
+                    let cost = MINING_RIG().get_cpu_upgrade_cost() as f64;
 
                     if MARKET.write().bank.withdraw(cost) {
                         MINING_RIG.write().upgrade_cpu();
@@ -745,7 +745,7 @@ pub fn RigCPUTab(selected_tab: Signal<String>) -> Element {
 pub fn RigDetailsTab(selected_tab: Signal<String>) -> Element {
     let upgrade_auto_power_fill = {
         move |_| {
-            let cost = MINING_RIG().get_auto_power_fill_upgrade_cost() as f32;
+            let cost = MINING_RIG().get_auto_power_fill_upgrade_cost() as f64;
 
             if MARKET.write().bank.withdraw(cost) {
                 MINING_RIG.write().upgrade_auto_power_fill();
@@ -797,7 +797,7 @@ pub fn RigDetailsTab(selected_tab: Signal<String>) -> Element {
     let auto_fill_level = MINING_RIG().get_auto_power_fill_level();
 
     let can_upgrade_auto_fill = {
-        if (MARKET().bank.balance < MINING_RIG().get_auto_power_fill_upgrade_cost() as f32)
+        if (MARKET().bank.balance < MINING_RIG().get_auto_power_fill_upgrade_cost() as f64)
             || auto_fill_level >= 40
         {
             true
@@ -807,7 +807,7 @@ pub fn RigDetailsTab(selected_tab: Signal<String>) -> Element {
     };
 
     let can_upgrade_rig = {
-        if MARKET().bank.balance < MINING_RIG().get_rig_upgrade_cost() as f32 {
+        if MARKET().bank.balance < MINING_RIG().get_rig_upgrade_cost() as f64 {
             true
         } else {
             false
@@ -824,10 +824,10 @@ pub fn RigDetailsTab(selected_tab: Signal<String>) -> Element {
                     p { "GPU Slots: {MINING_RIG().get_max_gpu_slots()}" }
                     p { "ASIC Slots: {MINING_RIG().get_max_asic_slots()}" }
                     br {}
-                    p { "Current Hash Rate: {format_chart_price(MINING_RIG().get_hash_rate() as f32, 2)}" }
-                    p { "Power Usage: {format_chart_price(MINING_RIG().get_power_usage() as f32, 2)}" }
+                    p { "Current Hash Rate: {format_chart_price(MINING_RIG().get_hash_rate(), 2)}" }
+                    p { "Power Usage: {format_chart_price(MINING_RIG().get_power_usage(), 2)}" }
                     br {}
-                    p { "Rig Upgrade Cost: ${format_chart_price(MINING_RIG().get_rig_upgrade_cost() as f32, 2)}" }
+                    p { "Rig Upgrade Cost: ${format_chart_price(MINING_RIG().get_rig_upgrade_cost(), 2)}" }
                 }
                 if auto_fill_level > 0 {
                     div { style: "text-align: end;",
@@ -835,15 +835,15 @@ pub fn RigDetailsTab(selected_tab: Signal<String>) -> Element {
                         p { "Level: {MINING_RIG().get_auto_power_fill_level()}" }
                         p { "Fill Amount: {MINING_RIG().get_auto_power_fill_amount() * 100.0:.0}%" }
                         p { "Fill Delay: {fill_delay}" }
-                        p { "Fill Cost: ${format_chart_price(MINING_RIG().get_auto_power_fill_cost(GAME_TIME().day) as f32, 2)}" }
+                        p { "Fill Cost: ${format_chart_price(MINING_RIG().get_auto_power_fill_cost(GAME_TIME().day), 2)}" }
                         br {}
-                        p { "Upgrade Cost: ${format_chart_price(MINING_RIG().get_auto_power_fill_upgrade_cost() as f32, 2)}" }
+                        p { "Upgrade Cost: ${format_chart_price(MINING_RIG().get_auto_power_fill_upgrade_cost(), 2)}" }
                     }
                 } else {
                     div { style: "text-align: end;",
                         h4 { "Auto Power Fill" }
                         br {}
-                        p { "Enable Cost: ${format_chart_price(MINING_RIG().get_auto_power_fill_upgrade_cost() as f32, 2)}" }
+                        p { "Enable Cost: ${format_chart_price(MINING_RIG().get_auto_power_fill_upgrade_cost(), 2)}" }
                     }
                 }
             }
@@ -856,7 +856,7 @@ pub fn RigDetailsTab(selected_tab: Signal<String>) -> Element {
                 onclick: |_| {
                     let cost = MINING_RIG().get_rig_upgrade_cost() as f32;
 
-                    if MARKET.write().bank.withdraw(cost) {
+                    if MARKET.write().bank.withdraw(cost as f64) {
                         MINING_RIG.write().upgrade();
 
                         let rig_lvl = MINING_RIG().get_level();
@@ -945,7 +945,7 @@ pub fn RigMiningTab(selected_tab: Signal<String>) -> Element {
     let can_do_fill_power = {
         let power_cost = MINING_RIG().get_power_fill_cost(GAME_TIME().day);
         let fill_amount = MINING_RIG().get_power_fill();
-        if MARKET().bank.balance >= power_cost && fill_amount < 1.0 {
+        if MARKET().bank.balance >= power_cost as f64 && fill_amount < 1.0 {
             true
         } else {
             false
@@ -1856,7 +1856,7 @@ fn format_game_time(game_time: &GameTime) -> String {
     format!("Day: {}, Time {}:{}", day, hour, minute)
 }
 
-fn format_chart_price(v: f32, decimals: usize) -> String {
+fn format_chart_price<T: std::fmt::Display + std::str::FromStr>(v: T, decimals: usize) -> String {
     let val = format!("{v:.decimals$}", decimals = decimals);
 
     let mut final_val = String::new();
@@ -1872,7 +1872,9 @@ fn format_chart_price(v: f32, decimals: usize) -> String {
         final_val.insert(0, c);
     }
 
-    let result = if val_split[1] == "00" {
+    let result = if val_split.len() == 1 {
+        final_val
+    } else if val_split[1] == "00" {
         final_val
     } else {
         format!("{}.{}", final_val, val_split[1])
@@ -2144,7 +2146,7 @@ async fn do_mining() {
             if refill_time == 0 {
                 let auto_fill_cost = MINING_RIG().get_auto_power_fill_cost(GAME_TIME().day);
 
-                if mkt.bank.withdraw(auto_fill_cost) {
+                if mkt.bank.withdraw(auto_fill_cost as f64) {
                     let fill_amount = MINING_RIG().get_auto_power_fill_amount();
                     MINING_RIG.write().fill_to_percent(fill_amount);
                     let power_available = MINING_RIG().get_power_fill();
@@ -2193,7 +2195,7 @@ async fn do_fill_power() {
     let day = GAME_TIME().day;
     let power_cost = MINING_RIG().get_power_fill_cost(day);
 
-    if MARKET.write().bank.withdraw(power_cost) {
+    if MARKET.write().bank.withdraw(power_cost as f64) {
         MINING_RIG.write().fill_power();
     }
 

@@ -73,7 +73,7 @@ impl RugProtection {
 
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize, Default)]
 pub struct Bank {
-    pub balance: f32,
+    pub balance: f64,
 }
 
 impl Bank {
@@ -81,11 +81,11 @@ impl Bank {
         Bank { balance: 0.0 }
     }
 
-    pub fn deposit(&mut self, amount: f32) {
+    pub fn deposit(&mut self, amount: f64) {
         self.balance += amount;
     }
 
-    pub fn withdraw(&mut self, amount: f32) -> bool {
+    pub fn withdraw(&mut self, amount: f64) -> bool {
         if self.balance >= amount {
             self.balance -= amount;
             true
@@ -175,7 +175,7 @@ impl MiningRig {
         }
     }
 
-    pub fn get_rug_protection_upgrade_cost(&self) -> f32 {
+    pub fn get_rug_protection_upgrade_cost(&self) -> f64 {
         let rug_protection_level = self.get_rug_protection_level();
 
         let rug_protection_active = self.get_rug_protection_active();
@@ -278,9 +278,13 @@ impl MiningRig {
         }
     }
 
-    pub fn get_auto_power_fill_cost(&self, day: u32) -> f32 {
-        let refill_cost = self.power_capacity / get_season(day);
-        refill_cost * (1.0 + self.get_auto_fill_fee()) * self.get_auto_power_fill_amount()
+    fn power_capacity(&self) -> f32 {
+        self.get_power_usage() as f32 * 40.0
+    }
+
+    pub fn get_auto_power_fill_cost(&self, day: u32) -> f64 {
+        let refill_cost = self.power_capacity() as f64 / get_season(day);
+        refill_cost * ((1.0 + self.get_auto_fill_fee()) * self.get_auto_power_fill_amount()) as f64
     }
 
     pub fn get_available_power(&self) -> f32 {
@@ -288,7 +292,7 @@ impl MiningRig {
     }
 
     pub fn get_power_capacity(&self) -> f32 {
-        self.power_capacity
+        self.power_capacity()
     }
 
     pub fn get_auto_power_fill_delay(&self) -> u32 {
@@ -314,10 +318,10 @@ impl MiningRig {
         }
     }
 
-    pub fn get_auto_power_fill_upgrade_cost(&self) -> u32 {
+    pub fn get_auto_power_fill_upgrade_cost(&self) -> f64 {
         let auto_fill_level = self.get_auto_power_fill_level();
 
-        match auto_fill_level {
+        let cost = match auto_fill_level {
             ..=3 => 100,
             4..=6 => 250,
             7..=9 => 500,
@@ -332,7 +336,9 @@ impl MiningRig {
             34..=36 => 500_000,
             37..=40 => 1_000_000,
             _ => 0,
-        }
+        };
+
+        cost as f64
     }
 
     pub fn get_auto_power_fill_amount(&self) -> f32 {
@@ -367,28 +373,19 @@ impl MiningRig {
     }
 
     pub fn get_power_fill(&self) -> f32 {
-        self.available_power / self.power_capacity
+        self.available_power / self.power_capacity()
     }
 
-    pub fn get_power_fill_cost(&self, day: u32) -> f32 {
-        (self.power_capacity - self.available_power) / get_season(day)
+    pub fn get_power_fill_cost(&self, day: u32) -> f64 {
+        (self.power_capacity() - self.available_power) as f64 / get_season(day)
     }
 
     pub fn fill_power(&mut self) {
-        self.available_power = self.power_capacity;
-    }
-
-    fn get_power_upgrade_amount(&self) -> f32 {
-        match self.level {
-            1..=5 => 500.0,
-            6..=10 => 750.0,
-            _ => 1000.0,
-        }
+        self.available_power = self.power_capacity();
     }
 
     pub fn upgrade(&mut self) {
         self.level += 1;
-        self.power_capacity += self.get_power_upgrade_amount();
         self.fill_power();
 
         let max_gpu_slots = self.get_max_gpu_slots();
@@ -515,8 +512,8 @@ impl MiningRig {
     }
 
     pub fn add_click_power(&mut self) {
-        self.available_power += (self.power_capacity * 0.05) as f32;
-        self.available_power = self.available_power.min(self.power_capacity);
+        self.available_power += (self.power_capacity() * 0.05) as f32;
+        self.available_power = self.available_power.min(self.power_capacity());
     }
 
     pub fn add_power(&mut self, power: f32) {
@@ -524,11 +521,11 @@ impl MiningRig {
     }
 
     pub fn fill_to_percent(&mut self, percent: f32) {
-        self.available_power = self.power_capacity * percent;
+        self.available_power = self.power_capacity() * percent;
     }
 
-    pub fn get_click_upgrade_cost(&self) -> u32 {
-        25 * self.click_power
+    pub fn get_click_upgrade_cost(&self) -> f64 {
+        25.0 * self.click_power as f64
     }
 
     pub fn upgrade_gpu(&mut self) {
@@ -551,49 +548,49 @@ impl MiningRig {
         self.asic_slot.level
     }
 
-    pub fn get_cpu_upgrade_cost(&self) -> u32 {
-        25 * self.cpu_upgrade_level
+    pub fn get_cpu_upgrade_cost(&self) -> f64 {
+        (25 * self.cpu_upgrade_level) as f64
     }
 
-    pub fn get_rig_upgrade_cost(&self) -> u32 {
+    pub fn get_rig_upgrade_cost(&self) -> f64 {
         match self.level {
-            1..=5 => 10 * self.level,
-            6..=10 => 25 * self.level,
-            11..=15 => 50 * self.level,
-            16..=20 => 100 * self.level,
-            21..=25 => 250 * self.level,
-            26..=30 => 500 * self.level,
-            31..=35 => 1000 * self.level,
-            36..=40 => 2500 * self.level,
-            _ => 5000 * self.level,
+            1..=5 => (10 * self.level) as f64,
+            6..=10 => (25 * self.level) as f64,
+            11..=15 => (50 * self.level) as f64,
+            16..=20 => (100 * self.level) as f64,
+            21..=25 => (250 * self.level) as f64,
+            26..=30 => (500 * self.level) as f64,
+            31..=35 => (1000 * self.level) as f64,
+            36..=40 => (2500 * self.level) as f64,
+            _ => (5000 * self.level) as f64,
         }
     }
 
-    pub fn get_gpu_upgrade_cost(&self) -> u32 {
+    pub fn get_gpu_upgrade_cost(&self) -> f64 {
         match self.gpu_upgrade_level {
-            1..=5 => 250 * self.gpu_upgrade_level,
-            6..=10 => 300 * self.gpu_upgrade_level,
-            11..=15 => 350 * self.gpu_upgrade_level,
-            16..=20 => 400 * self.gpu_upgrade_level,
-            21..=25 => 450 * self.gpu_upgrade_level,
-            26..=30 => 500 * self.gpu_upgrade_level,
-            31..=35 => 550 * self.gpu_upgrade_level,
-            36..=40 => 600 * self.gpu_upgrade_level,
-            _ => 1000 * self.gpu_upgrade_level,
+            1..=5 => (250 * self.gpu_upgrade_level) as f64,
+            6..=10 => (300 * self.gpu_upgrade_level) as f64,
+            11..=15 => (350 * self.gpu_upgrade_level) as f64,
+            16..=20 => (400 * self.gpu_upgrade_level) as f64,
+            21..=25 => (450 * self.gpu_upgrade_level) as f64,
+            26..=30 => (500 * self.gpu_upgrade_level) as f64,
+            31..=35 => (550 * self.gpu_upgrade_level) as f64,
+            36..=40 => (600 * self.gpu_upgrade_level) as f64,
+            _ => (1000 * self.gpu_upgrade_level) as f64,
         }
     }
 
-    pub fn get_asic_upgrade_cost(&self) -> u32 {
+    pub fn get_asic_upgrade_cost(&self) -> f64 {
         match self.asic_upgrade_level {
-            1..=5 => 2500 * self.asic_upgrade_level,
-            6..=10 => 3000 * self.asic_upgrade_level,
-            11..=15 => 3500 * self.asic_upgrade_level,
-            16..=20 => 4000 * self.asic_upgrade_level,
-            21..=25 => 4500 * self.asic_upgrade_level,
-            26..=30 => 5000 * self.asic_upgrade_level,
-            31..=35 => 5500 * self.asic_upgrade_level,
-            36..=40 => 6000 * self.asic_upgrade_level,
-            _ => 10000 * self.asic_upgrade_level,
+            1..=5 => (2500 * self.asic_upgrade_level) as f64,
+            6..=10 => (3000 * self.asic_upgrade_level) as f64,
+            11..=15 => (3500 * self.asic_upgrade_level) as f64,
+            16..=20 => (4000 * self.asic_upgrade_level) as f64,
+            21..=25 => (4500 * self.asic_upgrade_level) as f64,
+            26..=30 => (5000 * self.asic_upgrade_level) as f64,
+            31..=35 => (5500 * self.asic_upgrade_level) as f64,
+            36..=40 => (6000 * self.asic_upgrade_level) as f64,
+            _ => (10_000 * self.asic_upgrade_level) as f64,
         }
     }
 
@@ -921,9 +918,9 @@ impl CryptoCoin {
         shares_per_minute
     }
 
-    fn calculate_power_cost_per_minute(&self, day: u32) -> f32 {
+    fn calculate_power_cost_per_minute(&self, day: u32) -> f64 {
         let cost_per_unit = 1.0 / get_season(day);
-        let power_usage = MINING_RIG().get_power_usage() as f32;
+        let power_usage = MINING_RIG().get_power_usage() as f64;
         let usage_per_tick = power_usage / 20.0;
         let cost_per_tick = usage_per_tick * cost_per_unit;
 
@@ -946,7 +943,7 @@ impl CryptoCoin {
         }
 
         let effective_hash = self.get_effective_hash(hash_rate);
-        self.hashes += effective_hash / 4.0;
+        self.hashes += effective_hash / 6.0;
 
         while self.hashes >= self.hashes_per_share {
             self.set_share_cooldown();
@@ -1109,7 +1106,8 @@ impl Market {
 
     pub fn sell_coins(&mut self, coin: &CryptoCoin) {
         if let Some(coin) = self.coins.iter_mut().find(|c| c.name == coin.name) {
-            self.bank.deposit(coin.balance * coin.current_price);
+            self.bank
+                .deposit((coin.balance * coin.current_price) as f64);
             coin.balance = 0.0;
         }
     }
@@ -1201,7 +1199,7 @@ impl Market {
                     let protected_amount = coin.balance * rug_protection_amount;
                     let protection_value = protected_amount * coin.current_price;
 
-                    self.bank.deposit(protection_value);
+                    self.bank.deposit(protection_value as f64);
 
                     let msg = format!(
                         "DerpFi Rug protection activated for {}, {} coins sold for ${}",
