@@ -1290,14 +1290,14 @@ pub fn replace_coin(
 }
 
 pub fn gen_random_coin(index: usize, rig_lvl: u32) -> CryptoCoin {
-    let volitility = rand_from_range(0.002..0.07);
+    let volitility = rand_from_range(0.008..0.08);
     let mkt = MARKET();
 
     let coin_name = { format!("Coin-{}", mkt.index) };
 
     let shares_per_block = 1000;
     let block_reward = 100.0;
-    let max_blocks = rand_from_range(10.0..100.0) as u32;
+    let max_blocks = rand_from_range(10.0..25.0) as u32;
 
     let max_hashes_per_share = (rig_lvl * 1000).min(25_000);
 
@@ -1307,7 +1307,7 @@ pub fn gen_random_coin(index: usize, rig_lvl: u32) -> CryptoCoin {
 
     CryptoCoin::new(
         &coin_name,
-        rand_from_range(1.0..10.0),
+        rand_from_range(8.0..20.0),
         -volitility..volitility,
         index,
         shares_per_block,
@@ -1319,13 +1319,13 @@ pub fn gen_random_coin(index: usize, rig_lvl: u32) -> CryptoCoin {
 }
 
 pub fn gen_random_coin_with_set_index(index: usize, rig_lvl: u32) -> CryptoCoin {
-    let volitility = rand_from_range(0.002..0.07);
+    let volitility = rand_from_range(0.008..0.08);
 
     let coin_name = { format!("Coin-{}", index) };
 
     let shares_per_block = 1000;
     let block_reward = 100.0;
-    let max_blocks = rand_from_range(10.0..100.0) as u32;
+    let max_blocks = rand_from_range(10.0..25.0) as u32;
 
     let max_hashes_per_share = (rig_lvl * 1000).min(25_000);
 
@@ -1335,7 +1335,7 @@ pub fn gen_random_coin_with_set_index(index: usize, rig_lvl: u32) -> CryptoCoin 
 
     CryptoCoin::new(
         &coin_name,
-        rand_from_range(1.0..10.0),
+        rand_from_range(8.0..20.0),
         -volitility..volitility,
         index,
         shares_per_block,
