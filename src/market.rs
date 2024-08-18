@@ -78,9 +78,7 @@ pub struct Bank {
 
 impl Bank {
     pub fn new() -> Self {
-        Bank {
-            balance: 100_000_000.0,
-        }
+        Bank { balance: 0.0 }
     }
 
     pub fn deposit(&mut self, amount: f64) {
