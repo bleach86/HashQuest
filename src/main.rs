@@ -2268,9 +2268,10 @@ async fn game_loop(
 
         if iter >= 60 {
             let rig_lvl = MINING_RIG().level;
-            cull_market(series_labels, series, rig_lvl);
+            let day = GAME_TIME().day;
+            cull_market(series_labels, series, rig_lvl, day.clone());
             run_sim_one_day(series, labels).await;
-            MARKET.write().run_rug_pull();
+            MARKET.write().run_rug_pull(day.clone());
             MARKET.write().set_profit_factor();
             iter = 0;
         }
@@ -2411,7 +2412,13 @@ async fn recover_game_state(
                     did_catchup = false;
                     break;
                 }
-                cull_market(&mut series_labels_catchup, &mut series_catchup, rig_lvl);
+                let day = game_time_catchup.day;
+                cull_market(
+                    &mut series_labels_catchup,
+                    &mut series_catchup,
+                    rig_lvl,
+                    day,
+                );
                 run_sim_one_day(&mut series_catchup, &mut labels_catchup).await;
                 game_time_catchup.increment_15();
 

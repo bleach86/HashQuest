@@ -980,6 +980,9 @@ impl CryptoCoin {
     }
 
     pub fn get_age(&self) -> u32 {
+        if self.death_date.is_some() {
+            return self.death_date.unwrap() - self.berth_date;
+        }
         GAME_TIME().day - self.berth_date
     }
 
@@ -1126,11 +1129,12 @@ impl Market {
         self.coins.iter().find(|c| c.index == index)
     }
 
-    pub fn set_coin_inactive(&mut self, coin: &CryptoCoin) {
+    pub fn set_coin_inactive(&mut self, coin: &CryptoCoin, day: u32) {
         if let Some(index) = self.get_coin_index(coin) {
             self.coins[index].active = false;
             self.coins[index].current_price = 0.0;
             self.coins[index].index = 100;
+            self.coins[index].death_date = Some(day);
 
             let bal = self.coins[index].balance;
 
@@ -1185,7 +1189,7 @@ impl Market {
         }
     }
 
-    pub fn run_rug_pull(&mut self) {
+    pub fn run_rug_pull(&mut self, day: u32) {
         for coin in &mut self.coins {
             let rug_chance = coin.calculate_rug_chance();
             if rand_from_range(0.0..1.0) < rug_chance {
@@ -1211,6 +1215,7 @@ impl Market {
                 let msg = format!("{} has been rug pulled!", coin.name);
                 command_line_output(&msg);
                 coin.current_price = 0.0;
+                coin.death_date = Some(day);
             }
         }
     }
@@ -1244,13 +1249,14 @@ pub fn cull_market(
     series_labels: &mut Signal<Vec<String>>,
     series: &mut Signal<Vec<Vec<f32>>>,
     rig_lvl: u32,
+    day: u32,
 ) {
     let active_coins = MARKET().get_active_coins();
     for coin in active_coins {
         let mined_out = coin.blocks >= coin.max_blocks;
         let has_bal = coin.balance > 0.0;
         if coin.current_price < 0.01 || (mined_out && !has_bal) {
-            replace_coin(&coin, series_labels, series, rig_lvl);
+            replace_coin(&coin, series_labels, series, rig_lvl, day);
         }
     }
 }
@@ -1260,10 +1266,11 @@ pub fn replace_coin(
     series_labels: &mut Signal<Vec<String>>,
     series: &mut Signal<Vec<Vec<f32>>>,
     rig_lvl: u32,
+    day: u32,
 ) {
     let mut mkt = MARKET();
     let series_index = coin.index;
-    mkt.set_coin_inactive(&coin);
+    mkt.set_coin_inactive(&coin, day);
 
     match SELECTION().name {
         Some(selection) => {
