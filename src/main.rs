@@ -240,7 +240,7 @@ pub fn HeaderBelow() -> Element {
 
     let get_details_tab_class = {
         let can_upgrade_rig = {
-            if MARKET().bank.balance > MINING_RIG().get_rig_upgrade_cost() as f64 {
+            if MARKET().bank.balance > MINING_RIG().get_rig_upgrade_cost() {
                 true
             } else {
                 false
@@ -248,7 +248,7 @@ pub fn HeaderBelow() -> Element {
         };
 
         let can_upgrade_auto_fill = {
-            if MARKET().bank.balance > MINING_RIG().get_auto_power_fill_upgrade_cost() as f64 {
+            if MARKET().bank.balance > MINING_RIG().get_auto_power_fill_upgrade_cost() {
                 true
             } else {
                 false
@@ -263,7 +263,7 @@ pub fn HeaderBelow() -> Element {
     };
 
     let get_cpu_tab_class = {
-        if MARKET().bank.balance > MINING_RIG().get_cpu_upgrade_cost() as f64
+        if MARKET().bank.balance > MINING_RIG().get_cpu_upgrade_cost()
             && MINING_RIG().get_cpu_level() < 5
         {
             "rig-tab upgradeable"
@@ -273,7 +273,7 @@ pub fn HeaderBelow() -> Element {
     };
 
     let get_gpu_tab_class = {
-        if (MARKET().bank.balance >= MINING_RIG().get_gpu_upgrade_cost() as f64)
+        if (MARKET().bank.balance >= MINING_RIG().get_gpu_upgrade_cost())
             && MINING_RIG().get_filled_gpu_slots() < MINING_RIG().get_max_gpu_slots()
         {
             "rig-tab upgradeable"
@@ -283,7 +283,7 @@ pub fn HeaderBelow() -> Element {
     };
 
     let get_asic_tab_class = {
-        if (MARKET().bank.balance >= MINING_RIG().get_asic_upgrade_cost() as f64)
+        if (MARKET().bank.balance >= MINING_RIG().get_asic_upgrade_cost())
             && MINING_RIG().get_filled_asic_slots() < MINING_RIG().get_max_asic_slots()
         {
             "rig-tab upgradeable"
@@ -293,7 +293,7 @@ pub fn HeaderBelow() -> Element {
     };
 
     let get_rug_tab_class = {
-        if MARKET().bank.balance > MINING_RIG().get_rug_protection_upgrade_cost() as f64
+        if MARKET().bank.balance > MINING_RIG().get_rug_protection_upgrade_cost()
             && MINING_RIG().get_rug_protection_level() < 65
         {
             "rig-tab upgradeable"
@@ -438,7 +438,7 @@ pub fn RigRugProtectionTab(selected_tab: Signal<String>) -> Element {
 
     let rug_protection_can_upgrade = {
         let rug_protec_lvl = MINING_RIG().get_rug_protection_level();
-        if MARKET().bank.balance >= rug_protection_cost as f64 && rug_protec_lvl < 65 {
+        if MARKET().bank.balance >= rug_protection_cost && rug_protec_lvl < 65 {
             false
         } else {
             true
@@ -456,7 +456,7 @@ pub fn RigRugProtectionTab(selected_tab: Signal<String>) -> Element {
     let rug_protection_active = MINING_RIG().get_rug_protection_active();
 
     let do_rug_protection_upgrade = move |_| {
-        let cost = rug_protection_cost as f64;
+        let cost = rug_protection_cost;
 
         if MARKET.write().bank.withdraw(cost) {
             MINING_RIG.write().upgrade_rug_protection();
@@ -505,7 +505,7 @@ pub fn RigRugProtectionTab(selected_tab: Signal<String>) -> Element {
 pub fn RigAsicTab(selected_tab: Signal<String>) -> Element {
     let upgrade_asic = {
         move |_| {
-            let cost = MINING_RIG().get_asic_upgrade_cost() as f64;
+            let cost = MINING_RIG().get_asic_upgrade_cost();
 
             if MARKET.write().bank.withdraw(cost) {
                 MINING_RIG.write().upgrade_asic();
@@ -520,7 +520,7 @@ pub fn RigAsicTab(selected_tab: Signal<String>) -> Element {
     };
 
     let upgrade_available = {
-        if (MARKET().bank.balance < MINING_RIG().get_asic_upgrade_cost() as f64)
+        if (MARKET().bank.balance < MINING_RIG().get_asic_upgrade_cost())
             || MINING_RIG().get_filled_asic_slots() >= MINING_RIG().get_max_asic_slots()
         {
             true
@@ -585,7 +585,7 @@ pub fn RigAsicTab(selected_tab: Signal<String>) -> Element {
 pub fn RigGPUTab(selected_tab: Signal<String>) -> Element {
     let upgrade_gpu = {
         move |_| {
-            let cost = MINING_RIG().get_gpu_upgrade_cost() as f64;
+            let cost = MINING_RIG().get_gpu_upgrade_cost();
 
             if MARKET.write().bank.withdraw(cost) {
                 MINING_RIG.write().upgrade_gpu();
@@ -600,7 +600,7 @@ pub fn RigGPUTab(selected_tab: Signal<String>) -> Element {
     };
 
     let upgrade_available = {
-        if (MARKET().bank.balance < MINING_RIG().get_gpu_upgrade_cost() as f64)
+        if (MARKET().bank.balance < MINING_RIG().get_gpu_upgrade_cost())
             || MINING_RIG().get_filled_gpu_slots() >= MINING_RIG().get_max_gpu_slots()
         {
             true
@@ -686,7 +686,7 @@ pub fn RigCPUTab(selected_tab: Signal<String>) -> Element {
     };
 
     let upgrade_available = {
-        if (MARKET().bank.balance < MINING_RIG().get_cpu_upgrade_cost() as f64)
+        if (MARKET().bank.balance < MINING_RIG().get_cpu_upgrade_cost())
             || MINING_RIG().get_cpu_level() >= 5
         {
             true
@@ -724,7 +724,7 @@ pub fn RigCPUTab(selected_tab: Signal<String>) -> Element {
                 class: "",
                 disabled: upgrade_available,
                 onclick: |_| {
-                    let cost = MINING_RIG().get_cpu_upgrade_cost() as f64;
+                    let cost = MINING_RIG().get_cpu_upgrade_cost();
 
                     if MARKET.write().bank.withdraw(cost) {
                         MINING_RIG.write().upgrade_cpu();
@@ -745,7 +745,7 @@ pub fn RigCPUTab(selected_tab: Signal<String>) -> Element {
 pub fn RigDetailsTab(selected_tab: Signal<String>) -> Element {
     let upgrade_auto_power_fill = {
         move |_| {
-            let cost = MINING_RIG().get_auto_power_fill_upgrade_cost() as f64;
+            let cost = MINING_RIG().get_auto_power_fill_upgrade_cost();
 
             if MARKET.write().bank.withdraw(cost) {
                 MINING_RIG.write().upgrade_auto_power_fill();
@@ -797,7 +797,7 @@ pub fn RigDetailsTab(selected_tab: Signal<String>) -> Element {
     let auto_fill_level = MINING_RIG().get_auto_power_fill_level();
 
     let can_upgrade_auto_fill = {
-        if (MARKET().bank.balance < MINING_RIG().get_auto_power_fill_upgrade_cost() as f64)
+        if (MARKET().bank.balance < MINING_RIG().get_auto_power_fill_upgrade_cost())
             || auto_fill_level >= 40
         {
             true
@@ -807,7 +807,7 @@ pub fn RigDetailsTab(selected_tab: Signal<String>) -> Element {
     };
 
     let can_upgrade_rig = {
-        if MARKET().bank.balance < MINING_RIG().get_rig_upgrade_cost() as f64 {
+        if MARKET().bank.balance < MINING_RIG().get_rig_upgrade_cost() {
             true
         } else {
             false
@@ -854,9 +854,9 @@ pub fn RigDetailsTab(selected_tab: Signal<String>) -> Element {
                 class: "",
                 disabled: can_upgrade_rig,
                 onclick: |_| {
-                    let cost = MINING_RIG().get_rig_upgrade_cost() as f32;
+                    let cost = MINING_RIG().get_rig_upgrade_cost();
 
-                    if MARKET.write().bank.withdraw(cost as f64) {
+                    if MARKET.write().bank.withdraw(cost) {
                         MINING_RIG.write().upgrade();
 
                         let rig_lvl = MINING_RIG().get_level();
@@ -945,7 +945,7 @@ pub fn RigMiningTab(selected_tab: Signal<String>) -> Element {
     let can_do_fill_power = {
         let power_cost = MINING_RIG().get_power_fill_cost(GAME_TIME().day);
         let fill_amount = MINING_RIG().get_power_fill();
-        if MARKET().bank.balance >= power_cost as f64 && fill_amount < 1.0 {
+        if MARKET().bank.balance >= power_cost && fill_amount < 1.0 {
             true
         } else {
             false
@@ -2146,7 +2146,7 @@ async fn do_mining() {
             if refill_time == 0 {
                 let auto_fill_cost = MINING_RIG().get_auto_power_fill_cost(GAME_TIME().day);
 
-                if mkt.bank.withdraw(auto_fill_cost as f64) {
+                if mkt.bank.withdraw(auto_fill_cost) {
                     let fill_amount = MINING_RIG().get_auto_power_fill_amount();
                     MINING_RIG.write().fill_to_percent(fill_amount);
                     let power_available = MINING_RIG().get_power_fill();
@@ -2195,7 +2195,7 @@ async fn do_fill_power() {
     let day = GAME_TIME().day;
     let power_cost = MINING_RIG().get_power_fill_cost(day);
 
-    if MARKET.write().bank.withdraw(power_cost as f64) {
+    if MARKET.write().bank.withdraw(power_cost) {
         MINING_RIG.write().fill_power();
     }
 
