@@ -24,7 +24,6 @@ jobs:
         uses: dtolnay/rust-toolchain@stable
         with:
           toolchain: stable
-          profile: minimal
           target: wasm32-unknown-unknown
 
       - name: Cache cargo registry
