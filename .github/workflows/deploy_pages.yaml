@@ -11,72 +11,71 @@ on:
 permissions:
   contents: read
   pages: write
-  id-token: write 
+  id-token: write
 
 jobs:
   build:
     runs-on: ubuntu-latest
 
     steps:
-    - uses: actions/checkout@v3
+      - uses: actions/checkout@v3
 
-    - name: Set up Rust toolchain
-      uses: actions-rs/toolchain@v1
-      with:
-        toolchain: stable
-        profile: minimal
-        target: wasm32-unknown-unknown
-        override: true
+      - name: Set up Rust toolchain
+        uses: actions-rs/toolchain@v1
+        with:
+          toolchain: stable
+          profile: minimal
+          target: wasm32-unknown-unknown
+          override: true
 
-    - name: Cache cargo registry
-      uses: actions/cache@v3
-      with:
-        path: |
-          ~/.cargo/registry
-          ~/.cargo/git
-        key: ${{ runner.os }}-cargo-registry-${{ hashFiles('**/Cargo.lock') }}
-        restore-keys: |
-          ${{ runner.os }}-cargo-registry-
+      - name: Cache cargo registry
+        uses: actions/cache@v3
+        with:
+          path: |
+            ~/.cargo/registry
+            ~/.cargo/git
+          key: ${{ runner.os }}-cargo-registry-${{ hashFiles('**/Cargo.lock') }}
+          restore-keys: |
+            ${{ runner.os }}-cargo-registry-
 
-    - name: Cache cargo build
-      uses: actions/cache@v3
-      with:
-        path: |
-          target
-        key: ${{ runner.os }}-cargo-build-stable-release-${{ hashFiles('**/Cargo.lock') }}
-        restore-keys: |
-          ${{ runner.os }}-cargo-build-stable-release-
+      - name: Cache cargo build
+        uses: actions/cache@v3
+        with:
+          path: |
+            target
+          key: ${{ runner.os }}-cargo-build-stable-release-${{ hashFiles('**/Cargo.lock') }}
+          restore-keys: |
+            ${{ runner.os }}-cargo-build-stable-release-
 
-    - name: Cache Dioxus-CLI
-      uses: actions/cache@v3
-      with:
-        path: ~/.cargo/bin/dx
-        key: ${{ runner.os }}-dioxus-cli-${{ hashFiles('**/Cargo.toml') }}
-        restore-keys: |
-          ${{ runner.os }}-dioxus-cli-
-          ${{ runner.os }}-
+      - name: Cache Dioxus-CLI
+        uses: actions/cache@v3
+        with:
+          path: ~/.cargo/bin/dx
+          key: ${{ runner.os }}-dioxus-cli-${{ hashFiles('**/Cargo.toml') }}
+          restore-keys: |
+            ${{ runner.os }}-dioxus-cli-
+            ${{ runner.os }}-
 
-    - name: Install Dioxus-CLI
-      run: |
-        if ! command -v dx &> /dev/null; then
-          cargo install dioxus-cli
-        else
-          echo "Dioxus-CLI is already installed"
-        fi
+      - name: Install Dioxus-CLI
+        run: |
+          if ! command -v dx &> /dev/null; then
+            cargo install dioxus-cli
+          else
+            echo "Dioxus-CLI is already installed"
+          fi
 
+      - name: Build Project 🎁
+        run: |
+          dx build --release
+          cp ./dist/index.html ./dist/404.html
 
-    - name: Build Project 🎁
-      run: |
-        dx build --release
-        cp ./dist/index.html ./dist/404.html
-
-    - name: Upload GitHub Pages artifact
-      uses: actions/upload-pages-artifact@v3.0.1
-      with:
-        # Artifact name
-        name: github-pages
-        # Path of the directory containing the static assets.
-        path: ./dist
+      - name: Upload GitHub Pages artifact
+        uses: actions/upload-pages-artifact@v3.0.1
+        with:
+          # Artifact name
+          name: github-pages
+          # Path of the directory containing the static assets.
+          path: ./dist
 
   deploy:
     # Add a dependency to the build job
@@ -84,8 +83,8 @@ jobs:
 
     # Grant GITHUB_TOKEN the permissions required to make a Pages deployment
     permissions:
-      pages: write      # to deploy to Pages
-      id-token: write   # to verify the deployment originates from an appropriate source
+      pages: write # to deploy to Pages
+      id-token: write # to verify the deployment originates from an appropriate source
 
     # Deploy to the github-pages environment
     environment:
@@ -94,11 +93,12 @@ jobs:
 
     # Specify runner + deployment step
     runs-on: ubuntu-latest
+
+    if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+
     steps:
       - name: Deploy to GitHub Pages
         id: deployment
         uses: actions/deploy-pages@v4
         with:
           path: ./dist
-
-        
