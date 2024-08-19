@@ -905,7 +905,7 @@ impl CryptoCoin {
     pub fn hash_coin(&mut self, hash_rate: u32) {
         let share_cooldown = self.get_share_cooldown() != 0;
 
-        if self.blocks >= self.max_blocks || share_cooldown {
+        if self.blocks >= self.max_blocks || share_cooldown || !self.active {
             return;
         }
 
