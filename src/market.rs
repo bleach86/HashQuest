@@ -257,7 +257,7 @@ pub fn gen_random_coin(index: usize, rig_lvl: u32) -> CryptoCoin {
     let block_reward = 100.0;
     let max_blocks = rand_from_range(10.0..25.0) as u32;
 
-    let max_hashes_per_share = (rig_lvl * 1000).min(25_000);
+    let max_hashes_per_share = (rig_lvl * 1000).min(5_000);
 
     let hashes_per_share = rand_from_range(1000.0..max_hashes_per_share as f32);
 
@@ -285,7 +285,7 @@ pub fn gen_random_coin_with_set_index(index: usize, rig_lvl: u32) -> CryptoCoin 
     let block_reward = 100.0;
     let max_blocks = rand_from_range(10.0..25.0) as u32;
 
-    let max_hashes_per_share = (rig_lvl * 1000).min(25_000);
+    let max_hashes_per_share = (rig_lvl * 1000).min(5_000);
 
     let hashes_per_share = rand_from_range(1000.0..max_hashes_per_share as f32);
 
