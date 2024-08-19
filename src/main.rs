@@ -933,7 +933,7 @@ pub fn RigMiningTab(selected_tab: Signal<String>) -> Element {
         let selected_tab = selected_tab.clone();
         move || {
             if selected_tab() == "mining" {
-                "display: flex;margin-top: 10px;justify-content: space-between;"
+                "display: flex;margin-top: 5px;justify-content: space-between;"
             } else {
                 "display: none;"
             }
@@ -1026,12 +1026,7 @@ pub fn RigMiningTab(selected_tab: Signal<String>) -> Element {
 
         }
 
-        if MINING_RIG().get_auto_power_fill_level() > 0 {
-                div { style: get_style_status_bar(),
-                    input { id:"auto-power-fill", class: "", style: "", r#type: "checkbox", checked: MINING_RIG().get_auto_power_fill_active(), onchange: toggle_auto_power_fill }
-                    label { class: "", r#for: "auto-power-fill", "Enable Auto-power fill" }
-                }
-            }
+
 
         div {class: "flex flex-row", style: get_style_buttons(),
             button {
@@ -1045,16 +1040,24 @@ pub fn RigMiningTab(selected_tab: Signal<String>) -> Element {
             }
 
 
-            button {
-                class: "",
-                disabled: !can_do_fill_power,
-                onclick: move |_| async move {
+            div { class: "flex flex-col",
+                    if MINING_RIG().get_auto_power_fill_level() > 0 {
+                        div { style: get_style_status_bar(),
+                            input { id:"auto-power-fill", class: "", style: "", r#type: "checkbox", checked: MINING_RIG().get_auto_power_fill_active(), onchange: toggle_auto_power_fill }
+                            label { class: "", r#for: "auto-power-fill", "Enable Auto-power fill" }
+                        }
+                    }
+                    button {
+                    class: "",
+                    style: "margin-top: 10px;",
+                    disabled: !can_do_fill_power,
+                    onclick: move |_| async move {
 
-                    do_fill_power().await;
-                },
-                "Fill Power"
+                        do_fill_power().await;
+                    },
+                    "Fill Power"
+                }
             }
-
 
         }
         div { class: "status-bar", style: get_style_status_bar(),
@@ -1571,7 +1574,7 @@ pub fn CommandLine() -> Element {
         div { class: "relative top-8 items-center justify-center container",
             div {
                 class: "aspect-w-1 aspect-h-1 w-1/2 overflow-hidden window h-fit",
-                style: "height: 216px;",
+                style: "height: 220px;",
                 div {
                     class: "title-bar",
                     div {
