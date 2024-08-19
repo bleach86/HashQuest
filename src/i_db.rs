@@ -3,7 +3,8 @@ use serde::{Deserialize, Serialize};
 use wasm_bindgen::JsValue;
 use web_sys::DomException;
 
-use crate::market::{Market, MiningRig};
+use crate::market::Market;
+use crate::mining_rig::MiningRig;
 use crate::utils::{GameTime, Paused};
 
 #[derive(Serialize, Deserialize, Clone, Debug, Default)]

@@ -12,14 +12,17 @@ use i_db::{
     clear_game_state, get_game_state, get_seen_welcome, set_game_state, set_seen_welcome, GameState,
 };
 
+mod crypto_coin;
 mod market;
+mod mining_rig;
 mod utils;
 
-use market::CryptoCoin;
+use crypto_coin::CryptoCoin;
 use market::{
     clear_selected_coin, cull_market, gen_random_coin_with_set_index, GAME_TIME, MARKET,
-    MAX_SERIES_LENGTH, MINING_RIG, SELECTION,
+    MAX_SERIES_LENGTH, SELECTION,
 };
+use mining_rig::MINING_RIG;
 use utils::{command_line_output, CatchupModal, DoSave, GameTime, Paused};
 
 // Urls are relative to your Cargo.toml file
