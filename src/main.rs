@@ -1350,6 +1350,7 @@ pub fn Paint() -> Element {
 pub fn ProgressBar(progress_id: String, progress_message: String) -> Element {
     rsx! {
         div { class: "progress-bar sunken-panel",
+              style: "overflow: hidden;",
             div { id: format!("{}-pbar", progress_id),
                 class: "progress",
                 style: "width: 0%",
