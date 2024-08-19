@@ -1507,16 +1507,31 @@ pub fn Header() -> Element {
                         }
                     }
                 }
+
+
                 div {
                     class: "window-body",
-                        h4 { "Bank: ${format_chart_price(MARKET().bank.balance, 2)}" }
-                        h5 { "Currently Mining: {get_currently_mining}" }
-                        p { "Coins: {format_chart_price(coin_balance, 5)}" }
-                        p { "Shares: {get_shares}" }
-                        p { "Blocks: {get_coin_blocks}"}
-                        p { "Hash Rate: {hash_rate}" }
+                    div { class: "flex flex-row", style: "justify-content: space-between;",
+                        div{
+                            h4 { "Bank: ${format_chart_price(MARKET().bank.balance, 2)}" }
+                            h5 { "Currently Mining: {get_currently_mining}" }
+                            p { "Coins: {format_chart_price(coin_balance, 5)}" }
+                            p { "Shares: {get_shares}" }
+                            p { "Blocks: {get_coin_blocks}"}
+                            p { "Hash Rate: {hash_rate}" }
+                        }
+                        div {
+                            img {
+                                class: "",
+                                width: "100",
+                                src: "/android-chrome-192x192.png",
+                                alt: "Hash Quest Logo",
+                            }
+                        }
+                    }
 
                 }
+
 
                 div { class: "flex flex-row", style: "justify-content: space-between;margin:3px;",
                     div {
