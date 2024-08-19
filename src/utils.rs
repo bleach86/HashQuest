@@ -4,6 +4,16 @@ use serde::{Deserialize, Serialize};
 use wasm_bindgen::JsCast;
 
 #[derive(Serialize, Deserialize, Clone, Debug, Default, PartialEq)]
+pub struct HelpModal {
+    pub show: bool,
+}
+
+#[derive(Serialize, Deserialize, Clone, Debug, Default, PartialEq)]
+pub struct WelcomeModal {
+    pub show: bool,
+}
+
+#[derive(Serialize, Deserialize, Clone, Debug, Default, PartialEq)]
 pub struct Paused {
     pub paused: bool,
     pub btn_text: String,

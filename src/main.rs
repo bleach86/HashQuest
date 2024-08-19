@@ -23,7 +23,7 @@ use market::{
     MAX_SERIES_LENGTH, SELECTION,
 };
 use mining_rig::MINING_RIG;
-use utils::{command_line_output, CatchupModal, DoSave, GameTime, Paused};
+use utils::{command_line_output, CatchupModal, DoSave, GameTime, HelpModal, Paused, WelcomeModal};
 
 // Urls are relative to your Cargo.toml file
 const _TAILWIND_URL: &str = manganis::mg!(file("public/tailwind.css"));
@@ -31,6 +31,8 @@ const _TAILWIND_URL: &str = manganis::mg!(file("public/tailwind.css"));
 static IS_PAUSED: GlobalSignal<Paused> = Signal::global(|| Paused::new());
 static DO_SAVE: GlobalSignal<DoSave> = Signal::global(|| DoSave::default());
 static CATCHUP_MODAL: GlobalSignal<CatchupModal> = Signal::global(|| CatchupModal::default());
+static HELP_MODAL: GlobalSignal<HelpModal> = Signal::global(|| HelpModal::default());
+static WELCOME_MODAL: GlobalSignal<WelcomeModal> = Signal::global(|| WelcomeModal::default());
 
 const VERSION: &str = env!("CARGO_PKG_VERSION");
 
@@ -87,6 +89,8 @@ fn App() -> Element {
         }
         Modal {}
         CatchupModal {}
+        HelpModal {}
+        WelcomeModal {}
 
 
     }
@@ -117,10 +121,11 @@ fn Coins() -> Element {
                         class: "title-bar-controls",
                         button {
                             class: "close",
+                            aria_label: "Close",
                             onclick: |_| {
                                 info!("Closing window");
                             },
-                            "x"
+                            ""
                         }
                     }
                 }
@@ -319,10 +324,11 @@ pub fn HeaderBelow() -> Element {
                         class: "title-bar-controls",
                         button {
                             class: "close",
+                            aria_label: "Close",
                             onclick: |_| {
                                 info!("Closing window");
                             },
-                            "x"
+                            ""
                         }
                     }
                 }
@@ -824,8 +830,8 @@ pub fn RigDetailsTab(selected_tab: Signal<String>) -> Element {
                     h4 { "Mining Rig Details" }
                     p { "Level: {MINING_RIG().get_level()}" }
                     p { "Power Capacity: {format_chart_price(MINING_RIG().get_power_capacity(), 2)}" }
-                    p { "GPU Slots: {MINING_RIG().get_max_gpu_slots()}" }
-                    p { "ASIC Slots: {MINING_RIG().get_max_asic_slots()}" }
+                    p { "GPU Slots: {MINING_RIG().get_filled_gpu_slots()} / {MINING_RIG().get_max_gpu_slots()}" }
+                    p { "ASIC Slots: {MINING_RIG().get_filled_asic_slots()} / {MINING_RIG().get_max_asic_slots()}" }
                     br {}
                     p { "Current Hash Rate: {format_chart_price(MINING_RIG().get_hash_rate(), 2)}" }
                     p { "Power Usage: {format_chart_price(MINING_RIG().get_power_usage(), 2)}" }
@@ -1286,10 +1292,11 @@ pub fn Paint() -> Element {
                         class: "title-bar-controls",
                         button {
                             class: "close",
+                            aria_label: "Close",
                             onclick: move |_| {
                                 clear_canvas();
                             },
-                            "x"
+                            ""
                         }
                     }
                 }
@@ -1461,6 +1468,14 @@ pub fn Header() -> Element {
         format!("{shares:.0} / {shares_per_block:.0}")
     };
 
+    let show_help_modal = {
+        move || {
+            IS_PAUSED.write().btn_text = "Resume".to_string();
+            IS_PAUSED.write().toggle();
+            HELP_MODAL.write().show = true;
+        }
+    };
+
     rsx! {
         div { class: "relative top-8 items-center justify-center container",
             div {
@@ -1476,10 +1491,19 @@ pub fn Header() -> Element {
                         class: "title-bar-controls",
                         button {
                             class: "close",
+                            aria_label: "Help",
+                            onclick: move |_| {
+                                show_help_modal();
+                            },
+                            ""
+                        }
+                        button {
+                            class: "close",
+                            aria_label: "Close",
                             onclick: |_| {
                                 info!("Closing window");
                             },
-                            "x"
+                            ""
                         }
                     }
                 }
@@ -1542,10 +1566,11 @@ pub fn CommandLine() -> Element {
                         class: "title-bar-controls",
                         button {
                             class: "close",
+                            aria_label: "Close",
                             onclick: |_| {
                                 info!("Closing window");
                             },
-                            "x"
+                            ""
                         }
                     }
                 }
@@ -1557,6 +1582,160 @@ pub fn CommandLine() -> Element {
                         style: "background-color: #000;height: 177px;font-family: 'Consolas', 'Courier New', Courier, monospace;padding: 10px;line-height: 1.75;",
                         disabled: true,
                         resize: "none",
+                    }
+                }
+            }
+        }
+    }
+}
+
+#[component]
+pub fn WelcomeModal() -> Element {
+    let close_modal = {
+        move |_| {
+            WELCOME_MODAL.write().show = false;
+        }
+    };
+
+    rsx! {if WELCOME_MODAL().show
+        {
+            // Backdrop
+            div {
+                class: "backdrop",
+            }
+            // Modal content
+            div {
+                class: "window modal container m-3 overflow-hidden h-fit",
+                style: "max-width: 350px;min-width:225px;",
+                div {
+                    class: "title-bar",
+                    div {
+                        class: "title-bar-text",
+                        "Welcome"
+                    }
+                    div {
+                        class: "title-bar-controls",
+                        button {
+                            class: "close",
+                            aria_label: "Close",
+                            onclick: close_modal,
+                            ""
+                        }
+                    }
+                }
+                div {
+                    class: "window-body ",
+                    div {
+                        class: "p-6  mx-auto",
+                        h3 { "Welcome to HashQuest" }
+
+                        br {}
+
+                        p { "HashQuest is a cryptocurrency mining simulation game." }
+                        p { "You will start with a basic click powered mining rig." }
+                        p { "You can upgrade your rig with new gear to mine more cois faster." }
+                        p { "Before long you will be the Hash Rate Lord!" }
+
+                        br {}
+
+                        p { "But watch out for rug pulls!" }
+                        p { "Rug pulls can happen at any time, and any balance of that coin is wiped out." }
+                        p { "The higher a coins age, the higher the chance of a rug pull." }
+
+                        br {}
+
+                        p { "For more information, click the ? button in the title card" }
+
+                        h4 { "Good luck!" }
+
+                    }
+
+                    button {
+                        class: "",
+                        style: "margin-top: 10px;",
+                        onclick: close_modal,
+                        "Start Game"
+                    }
+
+                }
+            }
+        }
+    }
+}
+
+#[component]
+pub fn HelpModal() -> Element {
+    let close_modal = {
+        move |_| {
+            HELP_MODAL.write().show = false;
+        }
+    };
+
+    rsx! {if HELP_MODAL().show
+        {
+            // Backdrop
+            div {
+                class: "backdrop",
+            }
+            // Modal content
+            div {
+                class: "window modal container m-3 overflow-hidden h-fit",
+                style: "max-width: 350px;min-width:225px;",
+                div {
+                    class: "title-bar",
+                    div {
+                        class: "title-bar-text",
+                        "Help"
+                    }
+                    div {
+                        class: "title-bar-controls",
+                        button {
+                            class: "close",
+                            aria_label: "Close",
+                            onclick: close_modal,
+                            ""
+                        }
+                    }
+                }
+                div {
+                    class: "window-body ",
+                    div {
+                        class: "p-6  mx-auto",
+                        h3 { "How to Play HashQuest" }
+
+                        br {}
+
+                        h4 { "Getting Started" }
+
+                        p { "To start playing HashQuest, you will need to mine a cryptocurrency." }
+                        p { "To mine a cryptocurrency, you will need to select a coin to mine." }
+                        p { "Once you have selected a coin to mine, mining will begin so long as there is power available." }
+
+                        br {}
+
+                        p { "To power your rig, you can use the 'Click Power' button to charge your power level." }
+                        p { "You can also use the 'Fill Power' button to fill your power level to 100% for a fee." }
+
+                        br {}
+
+                        p { "You can sell the coins that you mine for money that is used to upgrade your mining rig." }
+                        p { "Upgrades do things like increase hashrate, lower cooldowns, rug pull protection, and automatically refill your power." }
+
+                        br {}
+
+                        p { "Rug pulls can happen at any time. Any balance of a rug pulled coin is lost, so make sure to sell before a rug." }
+                        p { "The higher a coins age, the higher the chance of a rug pull." }
+
+                        br {}
+
+                        h4 { "Good Luck!" }
+                    }
+
+                    button {
+                        class: "",
+                        style: "margin-top: 10px;",
+                        onclick: close_modal,
+                        "Close"
                     }
                 }
             }
@@ -1582,6 +1761,12 @@ pub fn Modal() -> Element {
         }
     };
 
+    let show_help_modal = {
+        move || {
+            HELP_MODAL.write().show = true;
+        }
+    };
+
     rsx! {if IS_PAUSED().paused
         {
             // Backdrop
@@ -1601,8 +1786,15 @@ pub fn Modal() -> Element {
                         class: "title-bar-controls",
                         button {
                             class: "close",
+                            aria_label: "Help",
+                            onclick: move |_|{show_help_modal();},
+                            ""
+                        }
+                        button {
+                            class: "close",
+                            aria_label: "Close",
                             onclick: close_modal,
-                            "x"
+                            ""
                         }
                     }
                 }
@@ -1611,26 +1803,14 @@ pub fn Modal() -> Element {
                     div {
                         class: "window",
                         style: "margin-bottom: 10px;padding: 10px;text-align: center;min-width: 225px;",
-                        h3 { "Welcome to Hash Quest" }
+                        h3 { "Game Paused" }
 
-                        br {}
-
-                        h4 { "Hash Quest is a cryptocurrency mining simulation game." }
-                        p { style: "font-size: small", "You will start with a basic click powered mining rig." }
-                        p { style: "font-size: small", "You can upgrade your rig with new gear to mine more cois faster." }
-                        p { style: "font-size: small", "Before long you will be the Hash Rate Lord!" }
-
-                        br {}
-
-                        h4 { "But watch out for rug pulls!" }
-                        p { style: "font-size: small", "Rug pulls can happen at any time, and any balance of that coin is wiped out." }
-                        p { style: "font-size: small", "The higher a coins age, the higher the chance of a rug pull." }
-
-
-                        br {}
-
-
-                        h4 { "Good luck!" }
+                        button {
+                            class: "",
+                            style: "margin-top: 10px;",
+                            onclick:  move |_|{show_help_modal();},
+                            "Help"
+                        }
 
                         p { "Click Resume to continue your game." }
 
@@ -1684,8 +1864,9 @@ pub fn CatchupModal() -> Element {
                         class: "title-bar-controls",
                         button {
                             class: "close",
+                            aria_label: "Close",
                             onclick: close_modal,
-                            "x"
+                            ""
                         }
                     }
                 }
@@ -1801,10 +1982,11 @@ pub fn Chart(
                         class: "title-bar-controls",
                         button {
                             class: "close",
+                            aria_label: "Close",
                             onclick: |_| {
                                 info!("Closing window");
                             },
-                            "x"
+                            ""
                         }
                     }
                 }
@@ -2236,7 +2418,7 @@ async fn game_loop(
 
         let seen_welcome = get_seen_welcome().await.unwrap_or_else(|_| false);
         if !seen_welcome {
-            IS_PAUSED.write().toggle();
+            WELCOME_MODAL.write().show = true;
             set_seen_welcome().await;
         }
     }
