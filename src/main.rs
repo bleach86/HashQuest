@@ -1820,12 +1820,18 @@ pub fn Modal() -> Element {
                         style: "margin-bottom: 10px;padding: 10px;text-align: center;min-width: 225px;",
                         h3 { "Game Paused" }
 
+                        br {}
+
+                        h4 { "Hint" }
+                        p { "Add to your home screen to play offline." }
+
                         button {
                             class: "",
                             style: "margin-top: 10px;",
                             onclick:  move |_|{show_help_modal();},
                             "Help"
                         }
+
 
                         p { "Click Resume to continue your game." }
 

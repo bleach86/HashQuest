@@ -30,6 +30,7 @@ web-sys = { version = "0.3.69", features = [
     "HtmlTableRowElement",
     "HtmlCanvasElement",
     "CanvasRenderingContext2d",
+
 ] }
 js-sys = "0.3.69"
 
