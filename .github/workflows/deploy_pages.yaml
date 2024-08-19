@@ -68,6 +68,7 @@ jobs:
           cp ./dist/index.html ./dist/404.html
 
       - name: Upload GitHub Pages artifact
+        if: github.event_name == 'push' && github.ref == 'refs/heads/main'
         uses: actions/upload-pages-artifact@v3.0.1
         with:
           # Artifact name
