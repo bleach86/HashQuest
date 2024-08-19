@@ -1771,8 +1771,18 @@ pub fn Modal() -> Element {
     let new_game = {
         move |_| {
             use_future(move || async {
-                clear_game_state().await;
-                window().location().reload().unwrap();
+                let window = window();
+                let confirm =
+                    window.confirm_with_message("Are you sure you want to start a new game?");
+                let confirm = match confirm {
+                    Ok(confirm) => confirm,
+                    Err(_) => false,
+                };
+
+                if confirm {
+                    clear_game_state().await;
+                    window.location().reload().unwrap();
+                }
             });
         }
     };
