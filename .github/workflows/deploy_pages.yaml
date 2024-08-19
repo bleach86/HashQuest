@@ -29,7 +29,7 @@ jobs:
           override: true
 
       - name: Cache cargo registry
-        uses: actions/cache@v3
+        uses: actions/cache@v4
         with:
           path: |
             ~/.cargo/registry
@@ -39,7 +39,7 @@ jobs:
             ${{ runner.os }}-cargo-registry-
 
       - name: Cache cargo build
-        uses: actions/cache@v3
+        uses: actions/cache@v4
         with:
           path: |
             target
@@ -48,7 +48,7 @@ jobs:
             ${{ runner.os }}-cargo-build-stable-release-
 
       - name: Cache Dioxus-CLI
-        uses: actions/cache@v3
+        uses: actions/cache@v4
         with:
           path: ~/.cargo/bin/dx
           key: ${{ runner.os }}-dioxus-cli-${{ hashFiles('**/Cargo.toml') }}
