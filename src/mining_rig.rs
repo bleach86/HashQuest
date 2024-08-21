@@ -534,7 +534,7 @@ impl MiningRig {
             26..=30 => (500 * self.gpu_upgrade_level) as f64,
             31..=35 => (550 * self.gpu_upgrade_level) as f64,
             36..=40 => (600 * self.gpu_upgrade_level) as f64,
-            _ => (1000 * self.gpu_upgrade_level) as f64,
+            _ => (700 * self.gpu_upgrade_level) as f64,
         }
     }
 
