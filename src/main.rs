@@ -1,4 +1,5 @@
 #![allow(non_snake_case)]
+use dioxus::html::input_data::MouseButton;
 use dioxus::prelude::*;
 use dioxus_charts::LineChart;
 use dioxus_logger::tracing::{info, Level};
@@ -67,7 +68,9 @@ fn App() -> Element {
     rsx! {
         link { rel: "stylesheet", href: "/98css/98.css" }
         link { rel: "stylesheet", href: "main.css" }
-        div { id: "content", class: "flex flex-col items-center justify-center relative",
+        div {
+            id: "content",
+            class: "flex flex-col items-center justify-center relative",
             style: "margin-top: 15px;margin-bottom: 15px;",
 
             div { class: " grid grid-cols-1 sm:grid-cols-2 gap-4 px-2 w-5/6",
@@ -77,13 +80,13 @@ fn App() -> Element {
                     div { class: "flex-1", HeaderBelow {} }
                 }
                 div { class: "grid grid-cols-1 w-full gap-4",
-                    div { class: "flex-1", Chart {labels, series, series_labels} }
+                    div { class: "flex-1",
+                        Chart { labels, series, series_labels }
+                    }
                     div { class: "flex-1", CommandLine {} }
                 }
                 div { class: "flex-1", Coins {} }
                 div { class: "flex-1", Paint {} }
-
-
             }
             Footer {}
         }
@@ -91,8 +94,6 @@ fn App() -> Element {
         CatchupModal {}
         HelpModal {}
         WelcomeModal {}
-
-
     }
 }
 
@@ -111,14 +112,9 @@ fn Coins() -> Element {
             div {
                 class: "aspect-w-1 aspect-h-1 w-1/2 window ",
                 style: "height: 350px;",
-                div {
-                    class: "title-bar",
-                    div {
-                        class: "title-bar-text",
-                        "Coins"
-                    }
-                    div {
-                        class: "title-bar-controls",
+                div { class: "title-bar",
+                    div { class: "title-bar-text", "Coins To Mine" }
+                    div { class: "title-bar-controls",
                         button {
                             class: "close",
                             aria_label: "Close",
@@ -135,44 +131,62 @@ fn Coins() -> Element {
 
                     div { class: "sunken-panel", style: "",
 
-
-
                         table { class: "interactive w-full",
-                            thead {class: "mb-3 fixed-header", style: "",
+                            thead { class: "mb-3 fixed-header", style: "",
                                 tr {
                                     //th { "Select" }
                                     th { "Coin" }
                                     th { "Curent Price" }
                                     th { "Balance" }
                                     th { "$ / Min" }
-                                    th { "Age"}
+                                    th { "Age" }
                                     th { "Sell" }
-
                                 }
                             }
-                            tbody { id: "coins-table", class: "p-5", style: "height: 262px; overflow-y: auto;",
+                            tbody {
+                                id: "coins-table",
+                                class: "p-5",
+                                style: "height: 262px; overflow-y: auto;",
                                 for coin in MARKET().index_sorted_coins(show_inactive()) {
-                                    tr {id: format!("{}-row", coin.name), onclick: {
-                                        let coin = coin.clone();
-                                        move |_| do_selection(coin.clone(), true)},
+                                    tr {
+                                        id: format!("{}-row", coin.name),
+                                        onclick: {
+                                            let coin = coin.clone();
+                                            move |_| do_selection(coin.clone(), true)
+                                        },
                                         td { style: "padding: 3px;display:none;",
                                             div {
                                                 class: "field-row flex flex-row justify-center",
                                                 style: "position:relative;top:-5px;",
-                                                input { class: "", id: coin.clone().name, r#type: "radio", name: "coin-selection", value: "{coin.name}" }
-                                                label { class: "", r#for: coin.clone().name}
+                                                input {
+                                                    class: "",
+                                                    id: coin.clone().name,
+                                                    r#type: "radio",
+                                                    name: "coin-selection",
+                                                    value: "{coin.name}"
+                                                }
+                                                label {
+                                                    class: "",
+                                                    r#for: coin.clone().name
+                                                }
                                             }
                                         }
                                         td { style: "padding: 3px;", "{coin.name}" }
-                                        td { style: "padding: 3px;", "${format_chart_price(coin.current_price, 2)}" }
-                                        td { style: "padding: 3px;font-family: 'Courier New', Courier, monospace;", "{format_chart_price(coin.balance,5)}" }
-                                        td { style: "padding: 3px;", "${format_chart_price(coin.profit_factor, 2)}" }
+                                        td { style: "padding: 3px;",
+                                            "${format_chart_price(coin.current_price, 2)}"
+                                        }
+                                        td { style: "padding: 3px;font-family: 'Courier New', Courier, monospace;",
+                                            "{format_chart_price(coin.balance,5)}"
+                                        }
+                                        td { style: "padding: 3px;",
+                                            "${format_chart_price(coin.profit_factor, 2)}"
+                                        }
                                         td { style: "padding: 3px;", "{coin.get_age()}" }
                                         if coin.active {
                                             td { style: "padding: 3px;",
                                                 button {
                                                     class: "sell-btn",
-                                                    onclick:  {
+                                                    onclick: {
                                                         let coin = coin.clone();
                                                         move |event| {
                                                             event.stop_propagation();
@@ -181,9 +195,6 @@ fn Coins() -> Element {
                                                             let price = coin.current_price;
                                                             let total = amount * price;
                                                             let name = coin.name.clone();
-
-
-
                                                             if amount > 0.0 {
                                                                 mkt.sell_coins(&coin);
                                                                 DO_SAVE.write().save = true;
@@ -209,21 +220,26 @@ fn Coins() -> Element {
                             }
                         }
                     }
-
                 }
                 div {
-                        class: "status-bar", style: "width:fit-content;position: relative;bottom: 2px;left: 7px;",
-                        p {
-                            class: "status-bar-field p-1 font-mono p-2",
-                            style: "padding:4px;",
-                            ""
-                            input { id:"show-inactive", class: "", style: "", r#type: "checkbox", onchange: toggel_inactive }
-                            label { class: "", r#for: "show-inactive", "Show Inactive" }
+                    class: "status-bar",
+                    style: "width:fit-content;position: relative;bottom: 2px;left: 7px;",
+                    p {
+                        class: "status-bar-field p-1 font-mono p-2",
+                        style: "padding:4px;",
+                        ""
+                        input {
+                            id: "show-inactive",
+                            class: "",
+                            style: "",
+                            r#type: "checkbox",
+                            onchange: toggel_inactive
                         }
+                        label { class: "", r#for: "show-inactive", "Show Inactive" }
                     }
+                }
             }
         }
-
     }
 }
 
@@ -237,7 +253,9 @@ pub fn Footer() -> Element {
 
     rsx! {
         div { class: "",
-            p { style: "text-align:center;margin-top: 15px;", "HashQuest {VERSION} | \u{00a9} {current_year} HashQuest.lol" }
+            p { style: "text-align:center;margin-top: 15px;",
+                "HashQuest {VERSION} | \u{00a9} {current_year} HashQuest.lol"
+            }
         }
     }
 }
@@ -312,16 +330,10 @@ pub fn HeaderBelow() -> Element {
 
     rsx! {
         div { class: "items-center justify-center container",
-            div {
-                class: "aspect-w-1 aspect-h-1 w-1/2 overflow-hidden window h-fit",
-                div {
-                    class: "title-bar",
-                    div {
-                        class: "title-bar-text",
-                        "Mining Rig"
-                    }
-                    div {
-                        class: "title-bar-controls",
+            div { class: "aspect-w-1 aspect-h-1 w-1/2 overflow-hidden window h-fit",
+                div { class: "title-bar",
+                    div { class: "title-bar-text", "Mining Rig" }
+                    div { class: "title-bar-controls",
                         button {
                             class: "close",
                             aria_label: "Close",
@@ -332,9 +344,8 @@ pub fn HeaderBelow() -> Element {
                         }
                     }
                 }
-                div {
-                    class: "window-body",
-                    menu {role: "tablist",
+                div { class: "window-body",
+                    menu { role: "tablist",
                         li {
                             id: "mining-tab",
                             role: "tab",
@@ -349,7 +360,7 @@ pub fn HeaderBelow() -> Element {
                             aria_selected: if selected_tab() == "details" { "true" } else { "false" },
                             style: "padding:5px;padding-left:10px;padding-right:10px;",
                             onclick: move |_| selected_tab.set("details".to_string()),
-                            p { class: get_details_tab_class,"Details" }
+                            p { class: get_details_tab_class, "Details" }
                         }
 
                         if MINING_RIG().get_level() >= 10 {
@@ -359,10 +370,9 @@ pub fn HeaderBelow() -> Element {
                                 aria_selected: if selected_tab() == "rug" { "true" } else { "false" },
                                 style: "padding:5px;padding-left:10px;padding-right:10px;",
                                 onclick: move |_| selected_tab.set("rug".to_string()),
-                                p { class: get_rug_tab_class,"DerpFi" }
+                                p { class: get_rug_tab_class, "DerpFi" }
                             }
                         }
-
 
                         if MINING_RIG().get_level() >= 2 {
                             li {
@@ -371,7 +381,7 @@ pub fn HeaderBelow() -> Element {
                                 aria_selected: if selected_tab() == "cpu" { "true" } else { "false" },
                                 style: "padding:5px;padding-left:10px;padding-right:10px;",
                                 onclick: move |_| selected_tab.set("cpu".to_string()),
-                                p { class: get_cpu_tab_class,"CPU" }
+                                p { class: get_cpu_tab_class, "CPU" }
                             }
                         }
 
@@ -382,7 +392,7 @@ pub fn HeaderBelow() -> Element {
                                 aria_selected: if selected_tab() == "gpu" { "true" } else { "false" },
                                 style: "padding:5px;padding-left:10px;padding-right:10px;",
                                 onclick: move |_| selected_tab.set("gpu".to_string()),
-                                p { class: get_gpu_tab_class,"GPU" }
+                                p { class: get_gpu_tab_class, "GPU" }
                             }
                         }
 
@@ -393,25 +403,25 @@ pub fn HeaderBelow() -> Element {
                                 aria_selected: if selected_tab() == "asic" { "true" } else { "false" },
                                 style: "padding:5px;padding-left:10px;padding-right:10px;",
                                 onclick: move |_| selected_tab.set("asic".to_string()),
-                                p { class: get_asic_tab_class,"ASIC" }
+                                p { class: get_asic_tab_class, "ASIC" }
                             }
                         }
                     }
 
-                    RigMiningTab {selected_tab}
-                    RigDetailsTab {selected_tab}
-                    RigAsicTab {selected_tab}
+                    RigMiningTab { selected_tab }
+                    RigDetailsTab { selected_tab }
+                    RigAsicTab { selected_tab }
 
                     if MINING_RIG().get_level() >= 2 {
-                        RigCPUTab {selected_tab}
+                        RigCPUTab { selected_tab }
                     }
 
                     if MINING_RIG().get_level() >= 5 {
-                        RigGPUTab {selected_tab}
+                        RigGPUTab { selected_tab }
                     }
 
                     if MINING_RIG().get_level() >= 10 {
-                        RigRugProtectionTab {selected_tab}
+                        RigRugProtectionTab { selected_tab }
                     }
                 }
             }
@@ -489,9 +499,13 @@ pub fn RigRugProtectionTab(selected_tab: Signal<String>) -> Element {
                 style: "justify-content: space-between;",
                 div {
                     h4 { "DerpFi Rug Protection" }
-                    p { "Rug Protection Level: {format_chart_price(MINING_RIG().get_rug_protection_level(), 2)}" }
+                    p {
+                        "Rug Protection Level: {format_chart_price(MINING_RIG().get_rug_protection_level(), 2)}"
+                    }
                     p { "Global Share Cooldown Eleminated: {!MINING_RIG().get_global_share_cooldown()}" }
-                    p { "Amount Rug Protected: {format_chart_price(MINING_RIG().get_rug_protection_amount() * 100.0, 2)}%" }
+                    p {
+                        "Amount Rug Protected: {format_chart_price(MINING_RIG().get_rug_protection_amount() * 100.0, 2)}%"
+                    }
                     br {}
                     p { "Rug Protection Upgrade Cost: ${format_chart_price(rug_protection_cost, 2)}" }
                 }
@@ -720,7 +734,9 @@ pub fn RigCPUTab(selected_tab: Signal<String>) -> Element {
                     br {}
 
                     if MINING_RIG().get_cpu_level() < 5 {
-                        p { "Upgrade Cost: ${format_chart_price(MINING_RIG().get_cpu_upgrade_cost(), 2)}" }
+                        p {
+                            "Upgrade Cost: ${format_chart_price(MINING_RIG().get_cpu_upgrade_cost(), 2)}"
+                        }
                     } else {
                         p { "Max Level" }
                     }
@@ -734,10 +750,8 @@ pub fn RigCPUTab(selected_tab: Signal<String>) -> Element {
                 disabled: upgrade_available,
                 onclick: |_| {
                     let cost = MINING_RIG().get_cpu_upgrade_cost();
-
                     if MARKET.write().bank.withdraw(cost) {
                         MINING_RIG.write().upgrade_cpu();
-
                         let cpu_lvl = MINING_RIG().get_cpu_level();
                         let msg = format!("CPU upgrade successful, new level {cpu_lvl}");
                         command_line_output(&msg);
@@ -825,18 +839,26 @@ pub fn RigDetailsTab(selected_tab: Signal<String>) -> Element {
 
     rsx! {
         div { class: "window", style: get_style(), role: "tabpanel",
-            div{ class: "flex flex-row", style: "justify-content: space-between;",
-                div{
+            div {
+                class: "flex flex-row",
+                style: "justify-content: space-between;",
+                div {
                     h4 { "Mining Rig Details" }
                     p { "Level: {MINING_RIG().get_level()}" }
                     p { "Power Capacity: {format_chart_price(MINING_RIG().get_power_capacity(), 2)}" }
-                    p { "GPU Slots: {MINING_RIG().get_filled_gpu_slots()} / {MINING_RIG().get_max_gpu_slots()}" }
-                    p { "ASIC Slots: {MINING_RIG().get_filled_asic_slots()} / {MINING_RIG().get_max_asic_slots()}" }
+                    p {
+                        "GPU Slots: {MINING_RIG().get_filled_gpu_slots()} / {MINING_RIG().get_max_gpu_slots()}"
+                    }
+                    p {
+                        "ASIC Slots: {MINING_RIG().get_filled_asic_slots()} / {MINING_RIG().get_max_asic_slots()}"
+                    }
                     br {}
                     p { "Current Hash Rate: {format_chart_price(MINING_RIG().get_hash_rate(), 2)}" }
                     p { "Power Usage: {format_chart_price(MINING_RIG().get_power_usage(), 2)}" }
                     br {}
-                    p { "Rig Upgrade Cost: ${format_chart_price(MINING_RIG().get_rig_upgrade_cost(), 2)}" }
+                    p {
+                        "Rig Upgrade Cost: ${format_chart_price(MINING_RIG().get_rig_upgrade_cost(), 2)}"
+                    }
                 }
                 if auto_fill_level > 0 {
                     div { style: "text-align: end;",
@@ -844,32 +866,35 @@ pub fn RigDetailsTab(selected_tab: Signal<String>) -> Element {
                         p { "Level: {MINING_RIG().get_auto_power_fill_level()}" }
                         p { "Fill Amount: {MINING_RIG().get_auto_power_fill_amount() * 100.0:.0}%" }
                         p { "Fill Delay: {fill_delay}" }
-                        p { "Fill Cost: ${format_chart_price(MINING_RIG().get_auto_power_fill_cost(GAME_TIME().day), 2)}" }
+                        p {
+                            "Fill Cost: ${format_chart_price(MINING_RIG().get_auto_power_fill_cost(GAME_TIME().day), 2)}"
+                        }
                         br {}
-                        p { "Upgrade Cost: ${format_chart_price(MINING_RIG().get_auto_power_fill_upgrade_cost(), 2)}" }
+                        p {
+                            "Upgrade Cost: ${format_chart_price(MINING_RIG().get_auto_power_fill_upgrade_cost(), 2)}"
+                        }
                     }
                 } else {
                     div { style: "text-align: end;",
                         h4 { "Auto Power Fill" }
                         br {}
-                        p { "Enable Cost: ${format_chart_price(MINING_RIG().get_auto_power_fill_upgrade_cost(), 2)}" }
+                        p {
+                            "Enable Cost: ${format_chart_price(MINING_RIG().get_auto_power_fill_upgrade_cost(), 2)}"
+                        }
                     }
                 }
             }
         }
 
-        div { class: "flex flex-row",style: get_style_buttons(),
+        div { class: "flex flex-row", style: get_style_buttons(),
             button {
                 class: "",
                 disabled: can_upgrade_rig,
                 onclick: |_| {
                     let cost = MINING_RIG().get_rig_upgrade_cost();
-
                     if MARKET.write().bank.withdraw(cost) {
                         MINING_RIG.write().upgrade();
-
                         let rig_lvl = MINING_RIG().get_level();
-
                         let msg = format!("Rig upgrade successful, new level {rig_lvl}");
                         command_line_output(&msg);
                     }
@@ -878,11 +903,11 @@ pub fn RigDetailsTab(selected_tab: Signal<String>) -> Element {
                 "Upgrade Rig"
             }
             button {
-                    class: "",
-                    disabled: can_upgrade_auto_fill,
-                    onclick: upgrade_auto_power_fill,
-                    "{enable_or_upgrade} Auto-power fill"
-                }
+                class: "",
+                disabled: can_upgrade_auto_fill,
+                onclick: upgrade_auto_power_fill,
+                "{enable_or_upgrade} Auto-power fill"
+            }
         }
     }
 }
@@ -991,10 +1016,16 @@ pub fn RigMiningTab(selected_tab: Signal<String>) -> Element {
     };
 
     rsx! {
-        div{ class: "window", style: get_style(), role: "tabpanel",
-            p {style: "font-size: medium;float:right;", class: "{class_from_name(selected_coin_name)} selected-name", "{selected_coin_name}" }
+        div { class: "window", style: get_style(), role: "tabpanel",
+            p {
+                style: "font-size: medium;float:right;",
+                class: "{class_from_name(selected_coin_name)} selected-name",
+                "{selected_coin_name}"
+            }
             h4 { "Share Progress" }
-            ProgressBar { progress_id: "share-progress".to_string(), progress_message: if share_cooldown_details.0 != 0 {
+            ProgressBar {
+                progress_id: "share-progress".to_string(),
+                progress_message: if share_cooldown_details.0 != 0 {
                     let cooldown_time = share_cooldown_details.1;
                     format!("Cooldown: {:.1}s", cooldown_time)
                 } else {
@@ -1002,13 +1033,15 @@ pub fn RigMiningTab(selected_tab: Signal<String>) -> Element {
                 }
             }
             h4 { "Block Progress" }
-            ProgressBar { progress_id: "block-progress".to_string(), progress_message:"".to_string() }
+            ProgressBar { progress_id: "block-progress".to_string(), progress_message: "".to_string() }
             h4 { "Power Level" }
-            ProgressBar { progress_id: "power_available-progress".to_string(), progress_message: if MINING_RIG().get_auto_power_refill_time() != Some(0)
-            && MINING_RIG().get_auto_power_fill_active() {
+            ProgressBar {
+                progress_id: "power_available-progress".to_string(),
+                progress_message: if MINING_RIG().get_auto_power_refill_time() != Some(0)
+                    && MINING_RIG().get_auto_power_fill_active()
+                {
                     let refill_time = MINING_RIG().get_auto_power_refill_time();
                     if MINING_RIG().get_power_fill() <= 0.2 && refill_time.is_some() {
-
                         match refill_time {
                             Some(refill_time) => {
                                 let refill_time = refill_time as f32 / 20.0;
@@ -1023,12 +1056,9 @@ pub fn RigMiningTab(selected_tab: Signal<String>) -> Element {
                     "".to_string()
                 }
             }
-
         }
 
-
-
-        div {class: "flex flex-row", style: get_style_buttons(),
+        div { class: "flex flex-row", style: get_style_buttons(),
             button {
                 class: "",
                 onclick: |_| async {
@@ -1039,26 +1069,30 @@ pub fn RigMiningTab(selected_tab: Signal<String>) -> Element {
                 "Click Power"
             }
 
-
             div { class: "flex flex-col",
-                    if MINING_RIG().get_auto_power_fill_level() > 0 {
-                        div { style: get_style_status_bar(),
-                            input { id:"auto-power-fill", class: "", style: "", r#type: "checkbox", checked: MINING_RIG().get_auto_power_fill_active(), onchange: toggle_auto_power_fill }
-                            label { class: "", r#for: "auto-power-fill", "Enable Auto-power fill" }
+                if MINING_RIG().get_auto_power_fill_level() > 0 {
+                    div { style: get_style_status_bar(),
+                        input {
+                            id: "auto-power-fill",
+                            class: "",
+                            style: "",
+                            r#type: "checkbox",
+                            checked: MINING_RIG().get_auto_power_fill_active(),
+                            onchange: toggle_auto_power_fill
                         }
+                        label { class: "", r#for: "auto-power-fill", "Enable Auto-power fill" }
                     }
-                    button {
+                }
+                button {
                     class: "",
                     style: "margin-top: 10px;",
                     disabled: !can_do_fill_power,
                     onclick: move |_| async move {
-
                         do_fill_power().await;
                     },
                     "Fill Power"
                 }
             }
-
         }
         div { class: "status-bar", style: get_style_status_bar(),
 
@@ -1102,8 +1136,6 @@ pub fn RigMiningTab(selected_tab: Signal<String>) -> Element {
                     "${format_chart_price(MINING_RIG().get_power_fill_cost(GAME_TIME().day), 2)}"
                 }
             }
-
-
         }
     }
 }
@@ -1204,6 +1236,33 @@ pub fn Paint() -> Element {
         is_drawing.set(false);
     };
 
+    let on_mouse_enter = move |e: MouseEvent| {
+        e.held_buttons().iter().for_each(|button| {
+            if button == MouseButton::Primary {
+                is_drawing.set(true);
+                let position = get_mouse_position(&e);
+                last_position.set(position.clone());
+            }
+        });
+        if is_drawing() {
+            let document = window().document().unwrap();
+            let canvas = document
+                .get_element_by_id("paint-canvas")
+                .unwrap()
+                .dyn_into::<web_sys::HtmlCanvasElement>()
+                .unwrap();
+            let context = canvas
+                .get_context("2d")
+                .unwrap()
+                .unwrap()
+                .dyn_into::<web_sys::CanvasRenderingContext2d>()
+                .unwrap();
+
+            context.begin_path();
+            context.move_to(last_position().x, last_position().y);
+        }
+    };
+
     // Mouse move handler
     let on_mouse_move = move |e: MouseEvent| {
         if is_drawing() {
@@ -1284,15 +1343,11 @@ pub fn Paint() -> Element {
     rsx! {
         div { class: "relative top-8 items-center justify-center container",
             div {
-                class: "w-1/2 overflow-hidden window h-fit", style: "height: 350px;",
-                div {
-                    class: "title-bar",
-                    div {
-                        class: "title-bar-text",
-                        "Paint"
-                    }
-                    div {
-                        class: "title-bar-controls",
+                class: "w-1/2 overflow-hidden window h-fit",
+                style: "height: 350px;",
+                div { class: "title-bar",
+                    div { class: "title-bar-text", "Paint" }
+                    div { class: "title-bar-controls",
                         button {
                             class: "close",
                             aria_label: "Close",
@@ -1303,46 +1358,126 @@ pub fn Paint() -> Element {
                         }
                     }
                 }
-                div {
-                    class: "window-body h-full",
+                div { class: "window-body h-full",
                     div { class: "sunken-panel",
-                        canvas { id: "paint-canvas",
-                                class: "paint-canvas",
-                                style: "width: 100%;max-width: 377px;",
-                                height: "275",
-                                width: "377",
-                                onmousedown: on_mouse_down,
-                                onmouseup: on_mouse_up,
-                                onmousemove: on_mouse_move,
-                                ontouchstart: on_touch_start,
-                                ontouchend: on_touch_end,
-                                ontouchmove: on_touch_move,
-                                prevent_default: "ontouchmove",
-                            }
+                        canvas {
+                            id: "paint-canvas",
+                            class: "paint-canvas",
+                            style: "width: 100%;max-width: 377px;",
+                            height: "275",
+                            width: "377",
+                            onmousedown: on_mouse_down,
+                            onmouseup: on_mouse_up,
+                            onmousemove: on_mouse_move,
+                            onmouseleave: on_mouse_up,
+                            onmouseenter: on_mouse_enter,
+                            ontouchstart: on_touch_start,
+                            ontouchend: on_touch_end,
+                            ontouchmove: on_touch_move,
+                            prevent_default: "ontouchmove"
+                        }
                     }
 
                     div {
                         class: "palette sunken-panel",
                         style: "display: flex; flex-direction: row; margin-top: 7px;",
-                        div { class: "color-button", style: "background-color: black;", onclick: move |_| {drawing_color.set("black".to_string())}, "" }
-                        div { class: "color-button", style: "background-color: silver;", onclick: move |_| {drawing_color.set("silver".to_string())}, "" }
-                        div { class: "color-button", style: "background-color: gray;", onclick: move |_| {drawing_color.set("gray".to_string())}, "" }
-                        div { class: "color-button", style: "background-color: white;", onclick: move |_| {drawing_color.set("white".to_string())}, "" }
-                        div { class: "color-button", style: "background-color: maroon;", onclick: move |_| {drawing_color.set("maroon".to_string())}, "" }
-                        div { class: "color-button", style: "background-color: red;", onclick: move |_| {drawing_color.set("red".to_string())}, "" }
-                        div { class: "color-button", style: "background-color: purple;", onclick: move |_| {drawing_color.set("purple".to_string())}, "" }
-                        div { class: "color-button", style: "background-color: fuchsia;", onclick: move |_| {drawing_color.set("fuchsia".to_string())}, "" }
-                        div { class: "color-button", style: "background-color: green;", onclick: move |_| {drawing_color.set("green".to_string())}, "" }
-                        div { class: "color-button", style: "background-color: lime;", onclick: move |_| {drawing_color.set("lime".to_string())}, "" }
-                        div { class: "color-button", style: "background-color: olive;", onclick: move |_| {drawing_color.set("olive".to_string())}, "" }
-                        div { class: "color-button", style: "background-color: yellow;", onclick: move |_| {drawing_color.set("yellow".to_string())}, "" }
-                        div { class: "color-button", style: "background-color: navy;", onclick: move |_| {drawing_color.set("navy".to_string())}, "" }
-                        div { class: "color-button", style: "background-color: blue;", onclick: move |_| {drawing_color.set("blue".to_string())}, "" }
-                        div { class: "color-button", style: "background-color: teal;", onclick: move |_| {drawing_color.set("teal".to_string())}, "" }
-                        div { class: "color-button", style: "background-color: aqua;", onclick: move |_| {drawing_color.set("aqua".to_string())}, "" }
+                        div {
+                            class: "color-button",
+                            style: "background-color: black;",
+                            onclick: move |_| { drawing_color.set("black".to_string()) },
+                            ""
+                        }
+                        div {
+                            class: "color-button",
+                            style: "background-color: silver;",
+                            onclick: move |_| { drawing_color.set("silver".to_string()) },
+                            ""
+                        }
+                        div {
+                            class: "color-button",
+                            style: "background-color: gray;",
+                            onclick: move |_| { drawing_color.set("gray".to_string()) },
+                            ""
+                        }
+                        div {
+                            class: "color-button",
+                            style: "background-color: white;",
+                            onclick: move |_| { drawing_color.set("white".to_string()) },
+                            ""
+                        }
+                        div {
+                            class: "color-button",
+                            style: "background-color: maroon;",
+                            onclick: move |_| { drawing_color.set("maroon".to_string()) },
+                            ""
+                        }
+                        div {
+                            class: "color-button",
+                            style: "background-color: red;",
+                            onclick: move |_| { drawing_color.set("red".to_string()) },
+                            ""
+                        }
+                        div {
+                            class: "color-button",
+                            style: "background-color: purple;",
+                            onclick: move |_| { drawing_color.set("purple".to_string()) },
+                            ""
+                        }
+                        div {
+                            class: "color-button",
+                            style: "background-color: fuchsia;",
+                            onclick: move |_| { drawing_color.set("fuchsia".to_string()) },
+                            ""
+                        }
+                        div {
+                            class: "color-button",
+                            style: "background-color: green;",
+                            onclick: move |_| { drawing_color.set("green".to_string()) },
+                            ""
+                        }
+                        div {
+                            class: "color-button",
+                            style: "background-color: lime;",
+                            onclick: move |_| { drawing_color.set("lime".to_string()) },
+                            ""
+                        }
+                        div {
+                            class: "color-button",
+                            style: "background-color: olive;",
+                            onclick: move |_| { drawing_color.set("olive".to_string()) },
+                            ""
+                        }
+                        div {
+                            class: "color-button",
+                            style: "background-color: yellow;",
+                            onclick: move |_| { drawing_color.set("yellow".to_string()) },
+                            ""
+                        }
+                        div {
+                            class: "color-button",
+                            style: "background-color: navy;",
+                            onclick: move |_| { drawing_color.set("navy".to_string()) },
+                            ""
+                        }
+                        div {
+                            class: "color-button",
+                            style: "background-color: blue;",
+                            onclick: move |_| { drawing_color.set("blue".to_string()) },
+                            ""
+                        }
+                        div {
+                            class: "color-button",
+                            style: "background-color: teal;",
+                            onclick: move |_| { drawing_color.set("teal".to_string()) },
+                            ""
+                        }
+                        div {
+                            class: "color-button",
+                            style: "background-color: aqua;",
+                            onclick: move |_| { drawing_color.set("aqua".to_string()) },
+                            ""
+                        }
                     }
-
-
                 }
             }
         }
@@ -1352,9 +1487,9 @@ pub fn Paint() -> Element {
 #[component]
 pub fn ProgressBar(progress_id: String, progress_message: String) -> Element {
     rsx! {
-        div { class: "progress-bar sunken-panel",
-              style: "overflow: hidden;",
-            div { id: format!("{}-pbar", progress_id),
+        div { class: "progress-bar sunken-panel", style: "overflow: hidden;",
+            div {
+                id: format!("{}-pbar", progress_id),
                 class: "progress",
                 style: "width: 0%",
                 span {
@@ -1482,17 +1617,11 @@ pub fn Header() -> Element {
 
     rsx! {
         div { class: "relative top-8 items-center justify-center container",
-            div {
-                class: "aspect-w-1 aspect-h-1 w-1/2 overflow-hidden window h-fit",
+            div { class: "aspect-w-1 aspect-h-1 w-1/2 overflow-hidden window h-fit",
 
-                div {
-                    class: "title-bar",
-                    div {
-                        class: "title-bar-text",
-                        "Hash Quest"
-                    }
-                    div {
-                        class: "title-bar-controls",
+                div { class: "title-bar",
+                    div { class: "title-bar-text", "Hash Quest" }
+                    div { class: "title-bar-controls",
                         button {
                             class: "close",
                             aria_label: "Help",
@@ -1512,16 +1641,16 @@ pub fn Header() -> Element {
                     }
                 }
 
-
-                div {
-                    class: "window-body",
-                    div { class: "flex flex-row", style: "justify-content: space-between;",
-                        div{
+                div { class: "window-body",
+                    div {
+                        class: "flex flex-row",
+                        style: "justify-content: space-between;",
+                        div {
                             h4 { "Bank: ${format_chart_price(MARKET().bank.balance, 2)}" }
                             h5 { "Currently Mining: {get_currently_mining}" }
                             p { "Coins: {format_chart_price(coin_balance, 5)}" }
                             p { "Shares: {get_shares}" }
-                            p { "Blocks: {get_coin_blocks}"}
+                            p { "Blocks: {get_coin_blocks}" }
                             p { "Hash Rate: {hash_rate}" }
                         }
                         div {
@@ -1529,17 +1658,16 @@ pub fn Header() -> Element {
                                 class: "",
                                 width: "100",
                                 src: "/android-chrome-192x192.png",
-                                alt: "Hash Quest Logo",
+                                alt: "Hash Quest Logo"
                             }
                         }
                     }
-
                 }
 
-
-                div { class: "flex flex-row", style: "justify-content: space-between;margin:3px;",
-                    div {
-                        class: "status-bar",
+                div {
+                    class: "flex flex-row",
+                    style: "justify-content: space-between;margin:3px;",
+                    div { class: "status-bar",
                         p {
                             class: "status-bar-field p-1 font-mono p-2",
                             style: "font-family: 'Courier New', Courier, monospace;padding:4px;",
@@ -1547,12 +1675,9 @@ pub fn Header() -> Element {
                         }
                     }
 
-                    div {
-                        class: "ml-auto",
-                        p {
-                            class: "",
-                            div {
-                                class: "justify-end w-full mt-2",
+                    div { class: "ml-auto",
+                        p { class: "",
+                            div { class: "justify-end w-full mt-2",
                                 button {
                                     class: "",
                                     style: "",
@@ -1575,14 +1700,9 @@ pub fn CommandLine() -> Element {
             div {
                 class: "aspect-w-1 aspect-h-1 w-1/2 overflow-hidden window h-fit",
                 style: "height: 220px;",
-                div {
-                    class: "title-bar",
-                    div {
-                        class: "title-bar-text",
-                        "Command Line"
-                    }
-                    div {
-                        class: "title-bar-controls",
+                div { class: "title-bar",
+                    div { class: "title-bar-text", "Command Line" }
+                    div { class: "title-bar-controls",
                         button {
                             class: "close",
                             aria_label: "Close",
@@ -1593,14 +1713,13 @@ pub fn CommandLine() -> Element {
                         }
                     }
                 }
-                div {
-                    class: "window-body ",
+                div { class: "window-body ",
                     textarea {
                         id: "command-line",
                         class: "w-full text-white",
                         style: "background-color: #000;height: 177px;font-family: 'Consolas', 'Courier New', Courier, monospace;padding: 10px;line-height: 1.75;",
                         disabled: true,
-                        resize: "none",
+                        resize: "none"
                     }
                 }
             }
@@ -1616,24 +1735,17 @@ pub fn WelcomeModal() -> Element {
         }
     };
 
-    rsx! {if WELCOME_MODAL().show
-        {
+    rsx! {
+        if WELCOME_MODAL().show {
             // Backdrop
-            div {
-                class: "backdrop",
-            }
+            div { class: "backdrop" }
             // Modal content
             div {
                 class: "window modal container m-3 overflow-hidden h-fit",
                 style: "max-width: 350px;min-width:225px;",
-                div {
-                    class: "title-bar",
-                    div {
-                        class: "title-bar-text",
-                        "Welcome"
-                    }
-                    div {
-                        class: "title-bar-controls",
+                div { class: "title-bar",
+                    div { class: "title-bar-text", "Welcome" }
+                    div { class: "title-bar-controls",
                         button {
                             class: "close",
                             aria_label: "Close",
@@ -1642,10 +1754,8 @@ pub fn WelcomeModal() -> Element {
                         }
                     }
                 }
-                div {
-                    class: "window-body ",
-                    div {
-                        class: "p-6  mx-auto",
+                div { class: "window-body ",
+                    div { class: "p-6  mx-auto",
                         h3 { "Welcome to HashQuest" }
 
                         br {}
@@ -1658,7 +1768,9 @@ pub fn WelcomeModal() -> Element {
                         br {}
 
                         p { "But watch out for rug pulls!" }
-                        p { "Rug pulls can happen at any time, and any balance of that coin is wiped out." }
+                        p {
+                            "Rug pulls can happen at any time, and any balance of that coin is wiped out."
+                        }
                         p { "The higher a coins age, the higher the chance of a rug pull." }
 
                         br {}
@@ -1666,7 +1778,6 @@ pub fn WelcomeModal() -> Element {
                         p { "For more information, click the ? button in the title card" }
 
                         h4 { "Good luck!" }
-
                     }
 
                     button {
@@ -1675,7 +1786,6 @@ pub fn WelcomeModal() -> Element {
                         onclick: close_modal,
                         "Start Game"
                     }
-
                 }
             }
         }
@@ -1690,24 +1800,17 @@ pub fn HelpModal() -> Element {
         }
     };
 
-    rsx! {if HELP_MODAL().show
-        {
+    rsx! {
+        if HELP_MODAL().show {
             // Backdrop
-            div {
-                class: "backdrop",
-            }
+            div { class: "backdrop" }
             // Modal content
             div {
                 class: "window modal container m-3 overflow-hidden h-fit",
                 style: "max-width: 350px;min-width:225px;",
-                div {
-                    class: "title-bar",
-                    div {
-                        class: "title-bar-text",
-                        "Help"
-                    }
-                    div {
-                        class: "title-bar-controls",
+                div { class: "title-bar",
+                    div { class: "title-bar-text", "Help" }
+                    div { class: "title-bar-controls",
                         button {
                             class: "close",
                             aria_label: "Close",
@@ -1716,10 +1819,8 @@ pub fn HelpModal() -> Element {
                         }
                     }
                 }
-                div {
-                    class: "window-body ",
-                    div {
-                        class: "p-6  mx-auto",
+                div { class: "window-body ",
+                    div { class: "p-6  mx-auto",
                         h3 { "How to Play HashQuest" }
 
                         br {}
@@ -1728,21 +1829,33 @@ pub fn HelpModal() -> Element {
 
                         p { "To start playing HashQuest, you will need to mine a cryptocurrency." }
                         p { "To mine a cryptocurrency, you will need to select a coin to mine." }
-                        p { "Once you have selected a coin to mine, mining will begin so long as there is power available." }
+                        p {
+                            "Once you have selected a coin to mine, mining will begin so long as there is power available."
+                        }
 
                         br {}
 
-                        p { "To power your rig, you can use the 'Click Power' button to charge your power level." }
-                        p { "You can also use the 'Fill Power' button to fill your power level to 100% for a fee." }
+                        p {
+                            "To power your rig, you can use the 'Click Power' button to charge your power level."
+                        }
+                        p {
+                            "You can also use the 'Fill Power' button to fill your power level to 100% for a fee."
+                        }
 
                         br {}
 
-                        p { "You can sell the coins that you mine for money that is used to upgrade your mining rig." }
-                        p { "Upgrades do things like increase hashrate, lower cooldowns, rug pull protection, and automatically refill your power." }
+                        p {
+                            "You can sell the coins that you mine for money that is used to upgrade your mining rig."
+                        }
+                        p {
+                            "Upgrades do things like increase hashrate, lower cooldowns, rug pull protection, and automatically refill your power."
+                        }
 
                         br {}
 
-                        p { "Rug pulls can happen at any time. Any balance of a rug pulled coin is lost, so make sure to sell before a rug." }
+                        p {
+                            "Rug pulls can happen at any time. Any balance of a rug pulled coin is lost, so make sure to sell before a rug."
+                        }
                         p { "The higher a coins age, the higher the chance of a rug pull." }
 
                         br {}
@@ -1796,27 +1909,21 @@ pub fn Modal() -> Element {
         }
     };
 
-    rsx! {if IS_PAUSED().paused
-        {
+    rsx! {
+        if IS_PAUSED().paused {
             // Backdrop
-            div {
-                class: "backdrop",
-            }
+            div { class: "backdrop" }
             // Modal content
-            div {
-                class: "window modal pauseModal",
-                div {
-                    class: "title-bar",
-                    div {
-                        class: "title-bar-text",
-                        "Paused"
-                    }
-                    div {
-                        class: "title-bar-controls",
+            div { class: "window modal pauseModal",
+                div { class: "title-bar",
+                    div { class: "title-bar-text", "Paused" }
+                    div { class: "title-bar-controls",
                         button {
                             class: "close",
                             aria_label: "Help",
-                            onclick: move |_|{show_help_modal();},
+                            onclick: move |_| {
+                                show_help_modal();
+                            },
                             ""
                         }
                         button {
@@ -1827,8 +1934,7 @@ pub fn Modal() -> Element {
                         }
                     }
                 }
-                div {
-                    class: "window-body ",
+                div { class: "window-body ",
                     div {
                         class: "window",
                         style: "margin-bottom: 10px;padding: 10px;text-align: center;min-width: 225px;",
@@ -1842,30 +1948,21 @@ pub fn Modal() -> Element {
                         button {
                             class: "",
                             style: "margin-top: 10px;",
-                            onclick:  move |_|{show_help_modal();},
+                            onclick: move |_| {
+                                show_help_modal();
+                            },
                             "Help"
                         }
 
-
                         p { "Click Resume to continue your game." }
-
                     }
                     div {
                         class: "flex flex-row",
                         style: "justify-content: space-between;",
-                        button {
-                            class: "",
-                            onclick: close_modal,
-                            "Resume"
-                        }
-                        button {
-                            class: "",
-                            onclick: new_game,
-                            "New Game"
-                        }
+                        button { class: "", onclick: close_modal, "Resume" }
+                        button { class: "", onclick: new_game, "New Game" }
                     }
                 }
-
             }
         }
     }
@@ -1879,24 +1976,17 @@ pub fn CatchupModal() -> Element {
         }
     };
 
-    rsx! {if CATCHUP_MODAL().show
-        {
+    rsx! {
+        if CATCHUP_MODAL().show {
             // Backdrop
-            div {
-                class: "backdrop",
-            }
+            div { class: "backdrop" }
             // Modal content
             div {
                 class: "window modal container m-3 overflow-hidden h-fit",
                 style: "max-width: 350px;min-width:225px;",
-                div {
-                    class: "title-bar",
-                    div {
-                        class: "title-bar-text",
-                        "Copying..."
-                    }
-                    div {
-                        class: "title-bar-controls",
+                div { class: "title-bar",
+                    div { class: "title-bar-text", "Copying..." }
+                    div { class: "title-bar-controls",
                         button {
                             class: "close",
                             aria_label: "Close",
@@ -1905,23 +1995,16 @@ pub fn CatchupModal() -> Element {
                         }
                     }
                 }
-                div {
-                    class: "window-body ",
-                    div {
-                        class: "p-6  mx-auto",
+                div { class: "window-body ",
+                    div { class: "p-6  mx-auto",
 
-                        div { class:"file-animation",
-                            div { class: "folder",
-
-                            }
+                        div { class: "file-animation",
+                            div { class: "folder" }
                             div { class: "paper",
 
-                                img {src: "/file_windows-2.png"}
-
+                                img { src: "/file_windows-2.png" }
                             }
-                            div { class: "folder",
-
-                            }
+                            div { class: "folder" }
                         }
 
                         p {
@@ -1934,31 +2017,26 @@ pub fn CatchupModal() -> Element {
                             "Market simulation {CATCHUP_MODAL().current_sim} of {CATCHUP_MODAL().total_sim}"
                         }
 
-                        p {
-                            "ETA: {CATCHUP_MODAL().eta}"
-                        }
+                        p { "ETA: {CATCHUP_MODAL().eta}" }
                         p { style: "margin-bottom:10px;",
                             "Speed up factor: {CATCHUP_MODAL().speed_up:.2}x"
                         }
 
-                        ProgressBar {  progress_id: "catch-up".to_string(), progress_message:"shit".to_string() }
-                        div {   class: "flex flex-row", style: "justify-content: space-between;margin:3px;",
+                        ProgressBar { progress_id: "catch-up".to_string(), progress_message: "shit".to_string() }
+                        div {
+                            class: "flex flex-row",
+                            style: "justify-content: space-between;margin:3px;",
                             div {
                                 style: "margin-top:10px;",
                                 class: "status-bar",
-                                p {
-                                    class: "status-bar-field p-1",
-                                    style: "",
+                                p { class: "status-bar-field p-1", style: "",
                                     "You may cancel this operation at any time."
                                 }
                             }
 
-                            div {
-                                class: "ml-auto",
-                                p {
-                                    class: "",
-                                    div {
-                                        class: "justify-end w-full mt-2",
+                            div { class: "ml-auto",
+                                p { class: "",
+                                    div { class: "justify-end w-full mt-2",
                                         button {
                                             style: "margin-top:10px;",
                                             class: "",
@@ -1969,10 +2047,8 @@ pub fn CatchupModal() -> Element {
                                 }
                             }
                         }
-
                     }
                 }
-
             }
         }
     }
@@ -2002,19 +2078,12 @@ pub fn Chart(
     });
 
     rsx! {
-        div {
-            class: "flex flex-col items-center justify-center",
-            div {
-                class: "aspect-w-1 aspect-h-1 w-1/2 overflow-hidden window h-fit",
+        div { class: "flex flex-col items-center justify-center",
+            div { class: "aspect-w-1 aspect-h-1 w-1/2 overflow-hidden window h-fit",
 
-                div {
-                    class: "title-bar",
-                    div {
-                        class: "title-bar-text",
-                        "Market Watch"
-                    }
-                    div {
-                        class: "title-bar-controls",
+                div { class: "title-bar",
+                    div { class: "title-bar-text", "Market Watch" }
+                    div { class: "title-bar-controls",
                         button {
                             class: "close",
                             aria_label: "Close",
@@ -2026,8 +2095,7 @@ pub fn Chart(
                     }
                 }
 
-                div {
-                    class: "window-body text-md status-bar-field",
+                div { class: "window-body text-md status-bar-field",
                     if series().iter().all(|s| s.len() > 0) {
                         LineChart {
                             padding_top: 20,
@@ -2037,7 +2105,7 @@ pub fn Chart(
                             height: "250px",
                             series: series(),
                             labels: labels(),
-                            label_interpolation: (|v| format!("${}",format_chart_price(v, 2))) as fn(f32) -> String,
+                            label_interpolation: (|v| format!("${}", format_chart_price(v, 2))) as fn(f32) -> String,
                             series_labels: series_labels(),
                             show_labels: true,
                             show_lines: false,
@@ -2045,7 +2113,7 @@ pub fn Chart(
                             show_grid: false,
                             line_width: "0.25%",
                             dot_size: "0.5%",
-                            max_ticks: 12,
+                            max_ticks: 12
                         }
                     }
                 }
