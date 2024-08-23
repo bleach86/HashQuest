@@ -1,5 +1,6 @@
 #![allow(dead_code)]
 use dioxus::prelude::*;
+use dioxus_logger::tracing::info;
 use gloo_utils::window;
 use serde::{Deserialize, Serialize};
 use wasm_bindgen::JsCast;
@@ -58,11 +59,12 @@ impl Market {
         }
     }
 
-    pub fn sell_coins(&mut self, coin: &CryptoCoin) {
+    pub fn sell_coins(&mut self, coin: &CryptoCoin, amount: Option<f32>) {
         if let Some(coin) = self.coins.iter_mut().find(|c| c.name == coin.name) {
-            self.bank
-                .deposit((coin.balance * coin.current_price) as f64);
-            coin.balance = 0.0;
+            let amount = amount.unwrap_or(coin.balance);
+
+            self.bank.deposit((amount * coin.current_price) as f64);
+            coin.balance -= amount;
         }
     }
 
@@ -134,8 +136,14 @@ impl Market {
         self.coins.iter().filter(|c| c.active).cloned().collect()
     }
 
-    pub async fn simulate_day(&mut self) {
+    pub fn simulate_day(&mut self) {
         for coin in &mut self.coins {
+            coin.update_price();
+        }
+    }
+
+    pub fn simulate_day_single(&mut self, coin: &CryptoCoin) {
+        if let Some(coin) = self.coins.iter_mut().find(|c| c.name == coin.name) {
             coin.update_price();
         }
     }
@@ -194,6 +202,56 @@ impl Market {
             coin.decrement_share_cooldown();
         }
     }
+
+    pub fn buy_coin(&mut self, coin: &CryptoCoin, amount: f32) -> bool {
+        if let Some(coin) = self.coins.iter_mut().find(|c| c.name == coin.name) {
+            let cost = coin.current_price * amount;
+
+            info!("Buying {} of {} for ${}", amount, coin.name, cost);
+
+            info!("Bank balance: ${}", self.bank.balance);
+
+            if self.bank.withdraw(cost as f64) {
+                coin.balance += amount;
+                return true;
+            }
+        }
+        false
+    }
+
+    pub fn get_max_buyable(&self, coin: &CryptoCoin) -> f64 {
+        let bal = self.bank.balance;
+        let coin = self.coins.iter().find(|c| c.name == coin.name).unwrap();
+        let price = coin.current_price as f64;
+
+        bal / price
+    }
+
+    pub fn buy_max_coin(&mut self, coin: &CryptoCoin) -> bool {
+        let max_buyable = self.get_max_buyable(coin);
+        self.buy_coin(coin, max_buyable as f32)
+    }
+
+    pub fn get_newest_coin(&self) -> Option<CryptoCoin> {
+        let newest_idx = self.index - 1;
+        self.coins
+            .iter()
+            .find(|c| {
+                let name = c.name.clone();
+                let name_split = name.split('-').collect::<Vec<&str>>();
+                let curr_idx = name_split[1].parse::<u32>().unwrap();
+                curr_idx == newest_idx
+            })
+            .cloned()
+    }
+
+    pub fn get_coin_prince(&self, coin: &CryptoCoin) -> f32 {
+        self.coins
+            .iter()
+            .find(|c| c.name == coin.name)
+            .map(|c| c.current_price)
+            .unwrap_or(0.0)
+    }
 }
 
 pub fn cull_market(
@@ -248,7 +306,7 @@ pub fn replace_coin(
 }
 
 pub fn gen_random_coin(index: usize, rig_lvl: u32) -> CryptoCoin {
-    let volitility = rand_from_range(0.008..0.08);
+    let volitility = rand_from_range(0.02..0.08);
     let mkt = MARKET();
 
     let coin_name = { format!("Coin-{}", mkt.index) };
@@ -263,9 +321,17 @@ pub fn gen_random_coin(index: usize, rig_lvl: u32) -> CryptoCoin {
 
     let berth_date = GAME_TIME().day;
 
+    let price_range = match rig_lvl {
+        0..=3 => 8.0..20.0,
+        4..=6 => 20.0..40.0,
+        7..=9 => 40.0..60.0,
+        10..=12 => 60.0..80.0,
+        13.. => 80.0..100.0,
+    };
+
     CryptoCoin::new(
         &coin_name,
-        rand_from_range(8.0..20.0),
+        rand_from_range(price_range),
         -volitility..volitility,
         index,
         shares_per_block,
@@ -277,7 +343,7 @@ pub fn gen_random_coin(index: usize, rig_lvl: u32) -> CryptoCoin {
 }
 
 pub fn gen_random_coin_with_set_index(index: usize, rig_lvl: u32) -> CryptoCoin {
-    let volitility = rand_from_range(0.008..0.08);
+    let volitility = rand_from_range(0.02..0.08);
 
     let coin_name = { format!("Coin-{}", index) };
 

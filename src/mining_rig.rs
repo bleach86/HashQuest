@@ -77,11 +77,18 @@ impl Bank {
     }
 
     pub fn withdraw(&mut self, amount: f64) -> bool {
+        let persition = 0.0001;
+
         if self.balance >= amount {
             self.balance -= amount;
             true
         } else {
-            false
+            if (self.balance - amount).abs() < persition {
+                self.balance -= amount;
+                true
+            } else {
+                false
+            }
         }
     }
 }
@@ -214,7 +221,7 @@ impl MiningRig {
     }
 
     pub fn consume_power(&mut self) -> bool {
-        let power_usage_watts = (self.get_power_usage() as f32) / 20.0;
+        let power_usage_watts = (self.get_power_usage() as f32) / 40.0;
 
         if self.available_power >= power_usage_watts {
             self.available_power -= power_usage_watts;
@@ -223,6 +230,20 @@ impl MiningRig {
             // Not enough power to run the rig
             false
         }
+    }
+
+    pub fn get_new_coin_cooldown(&self) -> u32 {
+        self.click_power
+    }
+
+    pub fn decrement_new_coin_cooldown(&mut self) {
+        if self.click_power > 0 {
+            self.click_power -= 1;
+        }
+    }
+
+    pub fn set_new_coin_cooldown(&mut self) {
+        self.click_power = 5 * 20;
     }
 
     pub fn decrement_auto_power_refill_time(&mut self) {
@@ -289,14 +310,15 @@ impl MiningRig {
     pub fn get_auto_power_fill_delay(&self) -> u32 {
         let auto_fill_level = self.get_auto_power_fill_level();
         match auto_fill_level {
-            1..=3 => 30_000 / 50,
-            4..=6 => (25_000 - (auto_fill_level - 4) * 2_000) / 50,
-            7..=9 => (20_000 - (auto_fill_level - 7) * 2_000) / 50,
-            10..=12 => (15_000 - (auto_fill_level - 10) * 1_500) / 50,
-            13..=15 => (10_000 - (auto_fill_level - 13) * 1_500) / 50,
-            16..=18 => (5_000 - (auto_fill_level - 16) * 1_250) / 50,
-            19..=21 => (2_500 - (auto_fill_level - 19) * 750) / 50,
-            22..=24 => (1_000 - (auto_fill_level - 22) * 500) / 50,
+            1 => 5_000 / 50,
+            2 => 4_500 / 50,
+            3 => 4_000 / 50,
+            4 => 3_500 / 50,
+            5 => 3_000 / 50,
+            6 => 2_500 / 50,
+            7 => 2_000 / 50,
+            8 => 1_500 / 50,
+            9 => 1_000 / 50,
             _ => 0,
         }
     }
@@ -347,18 +369,10 @@ impl MiningRig {
     pub fn get_auto_fill_fee(&self) -> f32 {
         let auto_fill_level = self.get_auto_power_fill_level();
         match auto_fill_level {
-            1..=3 => 0.75,
-            4..=6 => 0.65 - (auto_fill_level - 4) as f32 * 0.05,
-            7..=9 => 0.60 - (auto_fill_level - 7) as f32 * 0.05,
-            10..=12 => 0.55 - (auto_fill_level - 10) as f32 * 0.05,
-            13..=15 => 0.50 - (auto_fill_level - 13) as f32 * 0.05,
-            16..=18 => 0.45 - (auto_fill_level - 16) as f32 * 0.05,
-            19..=21 => 0.32 - (auto_fill_level - 19) as f32 * 0.02,
-            22..=24 => 0.25 - (auto_fill_level - 22) as f32 * 0.02,
-            25..=27 => 0.20 - (auto_fill_level - 25) as f32 * 0.02,
-            28..=30 => 0.15 - (auto_fill_level - 28) as f32 * 0.02,
-            31..=33 => 0.10 - (auto_fill_level - 31) as f32 * 0.02,
-            34..=36 => 0.05 - (auto_fill_level - 34) as f32 * 0.01,
+            1..=3 => 0.25 - (auto_fill_level - 1) as f32 * 0.05,
+            4..=6 => 0.10 - (auto_fill_level - 4) as f32 * 0.05,
+            7..=9 => 0.05 - (auto_fill_level - 7) as f32 * 0.05,
+            10..=12 => 0.0 - (auto_fill_level - 10) as f32 * 0.05,
             _ => 0.0,
         }
     }
@@ -391,45 +405,65 @@ impl MiningRig {
     }
 
     pub fn get_max_asic_slots(&self) -> u32 {
-        let max_asic_slots = if self.level < 35 {
-            0
-        } else {
-            match self.level {
-                35..=50 => (self.level - 35) / 2 + 1,
-                51..=65 => 8 + (self.level - 51) / 2 * 2,
-                66..=80 => 22 + (self.level - 66) / 2 * 4,
-                81..=95 => 52 + (self.level - 81) / 2 * 6,
-                96..=110 => 94 + (self.level - 96) / 2 * 8,
-                111..=125 => 150 + (self.level - 111) / 2 * 10,
-                126..=140 => 220 + (self.level - 126) / 2 * 12,
-                141..=155 => 304 + (self.level - 141) / 2 * 14,
-                156..=170 => 402 + (self.level - 156) / 2 * 16,
-                _ => 514 + (self.level - 171) / 2 * 18,
+        let ranges = [
+            (35, 49, 0, 2),
+            (51, 65, 8, 3),
+            (67, 79, 22, 4),
+            (81, 95, 52, 6),
+            (97, 109, 94, 8),
+            (111, 125, 150, 10),
+            (127, 139, 220, 12),
+            (141, 155, 304, 14),
+            (157, 169, 402, 16),
+            (171, u32::MAX, 514, 18),
+        ];
+
+        if self.level < 35 {
+            return 0;
+        }
+
+        for &(start, end, base, multiplier) in &ranges {
+            if self.level >= start && self.level <= end {
+                let odd_level_increments = ((self.level - start) / 2) + 1;
+                return base + odd_level_increments * multiplier;
             }
-        };
-        max_asic_slots
+        }
+
+        self.max_asic_slots
     }
 
     pub fn get_max_gpu_slots(&self) -> u32 {
-        let max_gpu_slots = if self.level < 5 {
-            0
-        } else {
-            match self.level {
-                5..=21 => (self.level - 5) / 2 + 1,
-                22..=35 => 9 + (self.level - 22) / 2 * 2,
-                36..=50 => 23 + (self.level - 36) / 2 * 4,
-                51..=65 => 53 + (self.level - 51) / 2 * 6,
-                66..=80 => 95 + (self.level - 66) / 2 * 8,
-                81..=95 => 151 + (self.level - 81) / 2 * 10,
-                96..=110 => 221 + (self.level - 96) / 2 * 12,
-                111..=125 => 305 + (self.level - 111) / 2 * 14,
-                126..=140 => 403 + (self.level - 126) / 2 * 16,
-                141..=155 => 515 + (self.level - 141) / 2 * 18,
-                156..=170 => 641 + (self.level - 156) / 2 * 20,
-                _ => 781 + (self.level - 171) / 2 * 22,
+        let ranges = [
+            (5, 21, 0, 1),
+            (22, 35, 9, 2),
+            (36, 50, 23, 4),
+            (52, 66, 53, 6),
+            (66, 80, 95, 8),
+            (82, 94, 151, 10),
+            (96, 110, 221, 12),
+            (112, 124, 305, 14),
+            (126, 140, 403, 16),
+            (142, 154, 515, 18),
+            (156, 170, 641, 20),
+            (172, u32::MAX, 781, 22),
+        ];
+
+        if self.level < 5 {
+            return 0;
+        }
+
+        for &(start, end, base, multiplier) in &ranges {
+            if self.level >= start && self.level <= end {
+                let increments = if self.level < 35 {
+                    ((self.level - start) / 2) + 1
+                } else {
+                    (self.level - start) / 2
+                };
+                return base + increments * multiplier;
             }
-        };
-        max_gpu_slots
+        }
+
+        self.max_gpu_slots
     }
 
     pub fn add_gpu_slot(&mut self) {
@@ -463,12 +497,6 @@ impl MiningRig {
         self.asic_slot.get_level()
     }
 
-    pub fn upgrade_click_power(&mut self) {
-        if self.click_power < self.max_click_power {
-            self.click_power += 1;
-        }
-    }
-
     pub fn add_click_power(&mut self) {
         self.available_power += (self.power_capacity() * 0.05) as f32;
         self.available_power = self.available_power.min(self.power_capacity());
@@ -480,10 +508,6 @@ impl MiningRig {
 
     pub fn fill_to_percent(&mut self, percent: f32) {
         self.available_power = self.power_capacity() * percent;
-    }
-
-    pub fn get_click_upgrade_cost(&self) -> f64 {
-        25.0 * self.click_power as f64
     }
 
     pub fn upgrade_gpu(&mut self) {
@@ -526,29 +550,29 @@ impl MiningRig {
 
     pub fn get_gpu_upgrade_cost(&self) -> f64 {
         match self.gpu_upgrade_level {
-            1..=5 => (250 * self.gpu_upgrade_level) as f64,
-            6..=10 => (300 * self.gpu_upgrade_level) as f64,
-            11..=15 => (350 * self.gpu_upgrade_level) as f64,
-            16..=20 => (400 * self.gpu_upgrade_level) as f64,
-            21..=25 => (450 * self.gpu_upgrade_level) as f64,
-            26..=30 => (500 * self.gpu_upgrade_level) as f64,
-            31..=35 => (550 * self.gpu_upgrade_level) as f64,
-            36..=40 => (600 * self.gpu_upgrade_level) as f64,
-            _ => (700 * self.gpu_upgrade_level) as f64,
+            1..=5 => (150 * self.gpu_upgrade_level) as f64,
+            6..=10 => (200 * self.gpu_upgrade_level) as f64,
+            11..=15 => (250 * self.gpu_upgrade_level) as f64,
+            16..=20 => (300 * self.gpu_upgrade_level) as f64,
+            21..=25 => (250 * self.gpu_upgrade_level) as f64,
+            26..=30 => (400 * self.gpu_upgrade_level) as f64,
+            31..=35 => (450 * self.gpu_upgrade_level) as f64,
+            36..=40 => (500 * self.gpu_upgrade_level) as f64,
+            _ => (600 * self.gpu_upgrade_level) as f64,
         }
     }
 
     pub fn get_asic_upgrade_cost(&self) -> f64 {
         match self.asic_upgrade_level {
-            1..=5 => (2500 * self.asic_upgrade_level) as f64,
-            6..=10 => (3000 * self.asic_upgrade_level) as f64,
-            11..=15 => (3500 * self.asic_upgrade_level) as f64,
-            16..=20 => (4000 * self.asic_upgrade_level) as f64,
-            21..=25 => (4500 * self.asic_upgrade_level) as f64,
-            26..=30 => (5000 * self.asic_upgrade_level) as f64,
-            31..=35 => (5500 * self.asic_upgrade_level) as f64,
-            36..=40 => (6000 * self.asic_upgrade_level) as f64,
-            _ => (10_000 * self.asic_upgrade_level) as f64,
+            1..=5 => (3000 * self.asic_upgrade_level) as f64,
+            6..=10 => (3500 * self.asic_upgrade_level) as f64,
+            11..=15 => (4000 * self.asic_upgrade_level) as f64,
+            16..=20 => (4500 * self.asic_upgrade_level) as f64,
+            21..=25 => (5000 * self.asic_upgrade_level) as f64,
+            26..=30 => (5500 * self.asic_upgrade_level) as f64,
+            31..=35 => (6000 * self.asic_upgrade_level) as f64,
+            36..=40 => (6500 * self.asic_upgrade_level) as f64,
+            _ => (7500 * self.asic_upgrade_level) as f64,
         }
     }
 
@@ -646,7 +670,7 @@ impl AsicSlot {
         if !self.active {
             return 0;
         }
-        125 * self.amount
+        200 * self.amount
     }
 }
 
@@ -687,7 +711,7 @@ impl GpuSlot {
         if !self.active {
             return 0;
         }
-        40 * self.amount
+        65 * self.amount
     }
 }
 
@@ -726,6 +750,6 @@ impl CpuSlot {
         if !self.active {
             return 0;
         }
-        10 * self.level
+        25 * self.level
     }
 }

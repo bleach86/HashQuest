@@ -3,6 +3,14 @@ use gloo_utils::window;
 use serde::{Deserialize, Serialize};
 use wasm_bindgen::JsCast;
 
+use crate::crypto_coin::CryptoCoin;
+
+#[derive(Serialize, Deserialize, Clone, Debug, Default, PartialEq)]
+pub struct BuyModal {
+    pub show: bool,
+    pub coin: Option<CryptoCoin>,
+}
+
 #[derive(Serialize, Deserialize, Clone, Debug, Default, PartialEq)]
 pub struct HelpModal {
     pub show: bool,
@@ -133,10 +141,10 @@ pub fn get_season(day: u32) -> f64 {
     let day_in_year = if day == 0 { 0 } else { (day - 1) % 360 + 1 };
 
     match day_in_year {
-        ..=90 => 200.0,
-        91..=180 => 140.0,
-        181..=270 => 160.0,
-        271..=360 => 180.0,
+        ..=90 => 20000.0,
+        91..=180 => 14000.0,
+        181..=270 => 16000.0,
+        271..=360 => 18000.0,
         _ => 0.0,
     }
 }

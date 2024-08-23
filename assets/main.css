@@ -207,6 +207,8 @@ input[type="radio"] {
   left: 50%;
   transform: translate(-50%, -50%);
   z-index: 101;
+  max-height: 100vh;
+  overflow-y: auto;
 }
 
 .backdrop {
@@ -276,6 +278,8 @@ input[type="radio"] {
 .sell-btn {
   min-width: fit-content;
   min-height: fit-content;
+  margin-left: 2.5px;
+  margin-right: 2.5px;
 }
 
 .rig-tab:hover {
@@ -296,6 +300,22 @@ input[type="radio"] {
 
 .color-button:hover {
   cursor: pointer;
+}
+
+.market-buttons {
+  display: flex;
+  flex-direction: row;
+}
+
+.sell-btn.market {
+  padding: 10px;
+  margin: 10px;
+}
+
+@media screen and (max-width: 640px) {
+  .market-buttons {
+    flex-direction: column;
+  }
 }
 
 @media screen and (max-width: 768px) {

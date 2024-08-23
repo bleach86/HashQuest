@@ -20,11 +20,13 @@ mod utils;
 
 use crypto_coin::CryptoCoin;
 use market::{
-    clear_selected_coin, cull_market, gen_random_coin_with_set_index, GAME_TIME, MARKET,
-    MAX_SERIES_LENGTH, SELECTION,
+    clear_selected_coin, cull_market, gen_random_coin_with_set_index, replace_coin, GAME_TIME,
+    MARKET, MAX_SERIES_LENGTH, SELECTION,
 };
 use mining_rig::MINING_RIG;
-use utils::{command_line_output, CatchupModal, DoSave, GameTime, HelpModal, Paused, WelcomeModal};
+use utils::{
+    command_line_output, BuyModal, CatchupModal, DoSave, GameTime, HelpModal, Paused, WelcomeModal,
+};
 
 // Urls are relative to your Cargo.toml file
 const _TAILWIND_URL: &str = manganis::mg!(file("public/tailwind.css"));
@@ -34,6 +36,7 @@ static DO_SAVE: GlobalSignal<DoSave> = Signal::global(|| DoSave::default());
 static CATCHUP_MODAL: GlobalSignal<CatchupModal> = Signal::global(|| CatchupModal::default());
 static HELP_MODAL: GlobalSignal<HelpModal> = Signal::global(|| HelpModal::default());
 static WELCOME_MODAL: GlobalSignal<WelcomeModal> = Signal::global(|| WelcomeModal::default());
+static BUY_MODAL: GlobalSignal<BuyModal> = Signal::global(|| BuyModal::default());
 
 const VERSION: &str = env!("CARGO_PKG_VERSION");
 
@@ -67,7 +70,7 @@ fn App() -> Element {
     });
     rsx! {
         link { rel: "stylesheet", href: "/98css/98.css" }
-        link { rel: "stylesheet", href: "main.css" }
+        link { rel: "stylesheet", href: "main.css?v=1.0" }
         div {
             id: "content",
             class: "flex flex-col items-center justify-center relative",
@@ -85,7 +88,9 @@ fn App() -> Element {
                     }
                     div { class: "flex-1", CommandLine {} }
                 }
-                div { class: "flex-1", Coins {} }
+                div { class: "flex-1",
+                    Coins { series_labels: series_labels.clone(), series: series.clone(), labels: labels.clone() }
+                }
                 div { class: "flex-1", Paint {} }
             }
             Footer {}
@@ -94,16 +99,32 @@ fn App() -> Element {
         CatchupModal {}
         HelpModal {}
         WelcomeModal {}
+        BuyModal { series_labels: series_labels.clone(), series: series.clone(), labels: labels.clone() }
     }
 }
 
 #[component]
-fn Coins() -> Element {
+fn Coins(
+    series_labels: Signal<Vec<String>>,
+    series: Signal<Vec<Vec<f32>>>,
+    labels: Signal<Vec<String>>,
+) -> Element {
     let mut show_inactive = use_signal(|| false);
 
     let toggel_inactive = {
         move |_| {
             *show_inactive.write() = !show_inactive();
+        }
+    };
+
+    let new_coin_ready = || {
+        let new_coin_cooldown = MINING_RIG().get_new_coin_cooldown();
+
+        if new_coin_cooldown == 0 {
+            "Now!".to_string()
+        } else {
+            let seconds = new_coin_cooldown as f32 / 20.0;
+            format!("{seconds:.2}s")
         }
     };
 
@@ -140,7 +161,7 @@ fn Coins() -> Element {
                                     th { "Balance" }
                                     th { "$ / Min" }
                                     th { "Age" }
-                                    th { "Sell" }
+                                    th { "Market" }
                                 }
                             }
                             tbody {
@@ -184,26 +205,19 @@ fn Coins() -> Element {
                                         td { style: "padding: 3px;", "{coin.get_age()}" }
                                         if coin.active {
                                             td { style: "padding: 3px;",
-                                                button {
-                                                    class: "sell-btn",
-                                                    onclick: {
-                                                        let coin = coin.clone();
-                                                        move |event| {
-                                                            event.stop_propagation();
-                                                            let mut mkt = MARKET.write();
-                                                            let amount = coin.balance;
-                                                            let price = coin.current_price;
-                                                            let total = amount * price;
-                                                            let name = coin.name.clone();
-                                                            if amount > 0.0 {
-                                                                mkt.sell_coins(&coin);
-                                                                DO_SAVE.write().save = true;
-                                                                let msg = format!("Sold {amount} {name} for ${total}");
-                                                                command_line_output(&msg);
+                                                div { class: "flex flex-row justify-center",
+                                                    button {
+                                                        class: "sell-btn",
+                                                        onclick: {
+                                                            let coin = coin.clone();
+                                                            move |event| {
+                                                                event.stop_propagation();
+                                                                BUY_MODAL.write().coin = Some(coin.clone());
+                                                                BUY_MODAL.write().show = true;
                                                             }
-                                                        }
-                                                    },
-                                                    "Sell"
+                                                        },
+                                                        "Market"
+                                                    }
                                                 }
                                             }
                                         } else {
@@ -236,6 +250,11 @@ fn Coins() -> Element {
                             onchange: toggel_inactive
                         }
                         label { class: "", r#for: "show-inactive", "Show Inactive" }
+                    }
+                    p {
+                        class: "status-bar-field p-1 font-mono p-2",
+                        style: "padding:4px;",
+                        "New Ready in: {new_coin_ready()}"
                     }
                 }
             }
@@ -813,7 +832,7 @@ pub fn RigDetailsTab(selected_tab: Signal<String>) -> Element {
     };
 
     let fill_delay = {
-        let delay = MINING_RIG().get_auto_power_fill_delay() / 20;
+        let delay = MINING_RIG().get_auto_power_fill_delay() as f32 / 20.0;
         format!("{delay}s")
     };
 
@@ -821,7 +840,7 @@ pub fn RigDetailsTab(selected_tab: Signal<String>) -> Element {
 
     let can_upgrade_auto_fill = {
         if (MARKET().bank.balance < MINING_RIG().get_auto_power_fill_upgrade_cost())
-            || auto_fill_level >= 40
+            || auto_fill_level >= 13
         {
             true
         } else {
@@ -870,8 +889,13 @@ pub fn RigDetailsTab(selected_tab: Signal<String>) -> Element {
                             "Fill Cost: ${format_chart_price(MINING_RIG().get_auto_power_fill_cost(GAME_TIME().day), 2)}"
                         }
                         br {}
-                        p {
-                            "Upgrade Cost: ${format_chart_price(MINING_RIG().get_auto_power_fill_upgrade_cost(), 2)}"
+
+                        if MINING_RIG().get_auto_power_fill_level() < 13 {
+                            p {
+                                "Upgrade Cost: ${format_chart_price(MINING_RIG().get_auto_power_fill_upgrade_cost(), 2)}"
+                            }
+                        } else {
+                            p { "Max Level" }
                         }
                     }
                 } else {
@@ -1969,6 +1993,348 @@ pub fn Modal() -> Element {
 }
 
 #[component]
+pub fn BuyModal(
+    series: Signal<Vec<Vec<f32>>>,
+    series_labels: Signal<Vec<String>>,
+    labels: Signal<Vec<String>>,
+) -> Element {
+    let close_modal = {
+        move |_| {
+            BUY_MODAL.write().show = false;
+            BUY_MODAL.write().coin = None;
+        }
+    };
+
+    let coin_name = {
+        let coin = BUY_MODAL().coin.clone();
+
+        match coin {
+            Some(coin) => coin.name,
+            None => "No Coin".to_string(),
+        }
+    };
+
+    let coin_name_buy = coin_name.clone();
+    let coin_name_sell = coin_name.clone();
+    let coin_name_can_sell = coin_name.clone();
+    let coin_name_replace = coin_name.clone();
+    let coin_name_can_sell_max = coin_name.clone();
+
+    let max_buyable = {
+        let mkt = MARKET().clone();
+        let coin = mkt.coin_by_name(&coin_name);
+        let max_buyable = match coin {
+            Some(coin) => {
+                let amt = mkt.get_max_buyable(&coin);
+                if amt < 0.00001 {
+                    0.0
+                } else {
+                    amt
+                }
+            }
+            None => 0.0,
+        };
+        max_buyable
+    };
+
+    let can_buy_amount = move |amount| {
+        if max_buyable < 0.00001 {
+            return false;
+        }
+        max_buyable >= amount
+    };
+
+    let do_buy = move |amount, do_max| {
+        let mkt = MARKET();
+
+        let coin = mkt.coin_by_name(&coin_name_buy);
+        let mut mkt_mut = MARKET.write();
+        match coin {
+            Some(coin) => {
+                let buy_res = if do_max {
+                    mkt_mut.buy_max_coin(&coin)
+                } else {
+                    mkt_mut.buy_coin(&coin, amount)
+                };
+
+                let msg = if buy_res {
+                    format!("Purchase of {amount} {coin_name_buy} successful.")
+                } else {
+                    format!("Purchase of {amount} {coin_name_buy} failed.")
+                };
+                command_line_output(&msg);
+                DO_SAVE.write().save = true;
+            }
+            None => {}
+        }
+    };
+
+    let can_sell_amount = move |amount| {
+        let mkt = MARKET();
+        let coin = mkt.coin_by_name(&coin_name_can_sell);
+        match coin {
+            Some(coin) => coin.balance >= amount,
+            None => false,
+        }
+    };
+
+    let do_sell = move |amount, do_max| {
+        let mkt = MARKET();
+        let mut mut_mkt = MARKET.write();
+        let coin = mkt.coin_by_name(&coin_name_sell);
+
+        match coin {
+            Some(coin) => {
+                let amount = if do_max { coin.balance } else { amount };
+                let amount_opt = if do_max { None } else { Some(amount) };
+
+                let price = coin.current_price;
+                let total = amount * price;
+                let name = coin.name.clone();
+                if amount > 0.0 {
+                    mut_mkt.sell_coins(&coin, amount_opt);
+                    DO_SAVE.write().save = true;
+                    let msg = format!("Sold {amount} {name} for ${total}");
+                    command_line_output(&msg);
+                    DO_SAVE.write().save = true;
+                }
+            }
+            None => {}
+        }
+    };
+
+    let coin_balance = {
+        let mkt = MARKET().clone();
+        let coin = mkt.coin_by_name(&coin_name);
+        let coin_balance = match coin {
+            Some(coin) => coin.balance,
+            None => 0.0,
+        };
+        coin_balance
+    };
+
+    let coin_price = {
+        let mkt = MARKET().clone();
+        let coin = mkt.coin_by_name(&coin_name);
+        let coin_price = match coin {
+            Some(coin) => coin.current_price,
+            None => 0.0,
+        };
+        coin_price
+    };
+
+    rsx! {
+        if BUY_MODAL().show {
+            // Backdrop
+            div { class: "backdrop", onclick: close_modal }
+            // Modal content
+            div { class: "window modal pauseModal",
+                div { class: "title-bar",
+                    div { class: "title-bar-text", "Market" }
+                    div { class: "title-bar-controls",
+                        button {
+                            class: "close",
+                            aria_label: "Close",
+                            onclick: close_modal,
+                            ""
+                        }
+                    }
+                }
+                div { class: "window-body ",
+                    div {
+                        class: "window",
+                        style: "margin-bottom: 10px;padding: 10px;text-align: center;min-width: 225px;",
+                        h3 { "{coin_name} Market" }
+                        br {}
+                        p { style: "font-size:small;",
+                            "Current Price: ${format_chart_price(coin_price, 2)}"
+                        }
+                        p { style: "font-size:small;",
+                            "Bank Balance: ${format_chart_price(MARKET().bank.balance, 5)}"
+                        }
+                        p { style: "font-size:small;",
+                            "Max Purchase: {format_chart_price(max_buyable, 5)}"
+                        }
+                        p { style: "font-size:small;",
+                            "Coin Balance: {format_chart_price(coin_balance, 5)}"
+                        }
+                        br {}
+                        p { style: "font-size: medium;", "Buy" }
+                        div {
+                            class: "market-buttons",
+                            style: "justify-content: space-between;margin-bottom: 10px;",
+                            button {
+                                class: "sell-btn market",
+                                disabled: !can_buy_amount(1.0),
+                                onclick: {
+                                    let do_buy = do_buy.clone();
+                                    move |_| {
+                                        do_buy(1.0, false);
+                                    }
+                                },
+                                "+1"
+                            }
+                            button {
+                                class: "sell-btn market",
+                                disabled: !can_buy_amount(10.0),
+                                onclick: {
+                                    let do_buy = do_buy.clone();
+                                    move |_| {
+                                        do_buy(10.0, false);
+                                    }
+                                },
+                                "+10"
+                            }
+                            button {
+                                class: "sell-btn market",
+                                disabled: !can_buy_amount(100.0),
+                                onclick: {
+                                    let do_buy = do_buy.clone();
+                                    move |_| {
+                                        do_buy(100.0, false);
+                                    }
+                                },
+                                "+100"
+                            }
+                            button {
+                                class: "sell-btn market",
+                                disabled: !can_buy_amount(max_buyable),
+                                onclick: {
+                                    let do_buy = do_buy.clone();
+                                    move |_| {
+                                        do_buy(max_buyable as f32, true);
+                                    }
+                                },
+                                "Max"
+                            }
+                        }
+                        p { style: "font-size: medium;", "Sell" }
+                        div {
+                            class: "market-buttons",
+                            style: "justify-content: space-between;",
+                            button {
+                                class: "sell-btn market",
+                                disabled: !can_sell_amount(1.0),
+                                onclick: {
+                                    let do_sell = do_sell.clone();
+                                    move |_| {
+                                        do_sell(1.0, false);
+                                    }
+                                },
+                                "-1"
+                            }
+                            button {
+                                class: "sell-btn market",
+                                disabled: !can_sell_amount(10.0),
+                                onclick: {
+                                    let do_sell = do_sell.clone();
+                                    move |_| {
+                                        do_sell(10.0, false);
+                                    }
+                                },
+                                "-10"
+                            }
+                            button {
+                                class: "sell-btn market",
+                                disabled: !can_sell_amount(100.0),
+                                onclick: {
+                                    let do_sell = do_sell.clone();
+                                    move |_| {
+                                        do_sell(100.0, false);
+                                    }
+                                },
+                                "-100"
+                            }
+                            button {
+                                class: "sell-btn market",
+                                disabled: {
+                                    let coin_name = coin_name_can_sell_max.clone();
+                                    let mkt = MARKET().clone();
+                                    let coin = mkt.coin_by_name(&coin_name);
+                                    match coin {
+                                        Some(coin) => coin.balance <= 0.0,
+                                        None => true,
+                                    }
+                                },
+                                onclick: {
+                                    let do_sell = do_sell.clone();
+                                    move |_| {
+                                        do_sell(max_buyable as f32, true);
+                                    }
+                                },
+                                "Max"
+                            }
+                        }
+                    }
+                    div {
+                        class: "flex flex-row",
+                        style: "justify-content: space-between;",
+                        button { class: "", onclick: close_modal, "Close" }
+                        button {
+                            class: "",
+                            disabled: {
+                                let coin_name = coin_name_replace.clone();
+                                let mkt = MARKET().clone();
+                                let coin = mkt.coin_by_name(&coin_name);
+                                if coin.is_some() {
+                                    let coin = coin.unwrap();
+                                    let new_coin_cooldown = MINING_RIG().get_new_coin_cooldown();
+                                    if new_coin_cooldown == 0 {
+                                        if coin.balance > 0.0 { true } else { false }
+                                    } else {
+                                        true
+                                    }
+                                } else {
+                                    true
+                                }
+                            },
+                            onclick: move |_| {
+                                let window = window();
+                                let confirm = window
+                                    .confirm_with_message(
+                                        "Are you sure you want to dismiss this coin?\n\nThis action cannot be undone.",
+                                    );
+                                match confirm {
+                                    Ok(confirm) => {
+                                        if confirm {
+                                            let mut series_labels = series_labels.clone();
+                                            let mut series = series.clone();
+                                            let mut labels = labels.clone();
+                                            let rig_lvl = MINING_RIG().get_level();
+                                            let day = GAME_TIME().day;
+                                            let coin_name = coin_name_replace.clone();
+                                            let mkt = MARKET().clone();
+                                            let coin = mkt.coin_by_name(&coin_name);
+                                            let coin = match coin {
+                                                Some(coin) => coin,
+                                                None => return,
+                                            };
+                                            replace_coin(&coin, &mut series_labels, &mut series, rig_lvl, day);
+                                            MINING_RIG.write().set_new_coin_cooldown();
+                                            let latest_coin = MARKET().get_newest_coin();
+                                            if let Some(coin) = latest_coin {
+                                                run_sim_one_day_single(&mut series, &mut labels, &coin);
+                                            }
+                                            let msg = format!("Dismissed {coin_name}");
+                                            command_line_output(&msg);
+                                            BUY_MODAL.write().show = false;
+                                            BUY_MODAL.write().coin = None;
+                                            DO_SAVE.write().save = true;
+                                        }
+                                    }
+                                    Err(_) => {}
+                                }
+                            },
+                            "Dismiss Coin"
+                        }
+                    }
+                }
+            }
+        }
+    }
+}
+
+#[component]
 pub fn CatchupModal() -> Element {
     let close_modal = {
         move |_| {
@@ -2225,9 +2591,9 @@ async fn update_progess_bar(progress_id: &str, progress: f32) {
         .unwrap();
 }
 
-async fn run_sim_one_day(series: &mut Signal<Vec<Vec<f32>>>, labels: &mut Signal<Vec<String>>) {
+fn run_sim_one_day(series: &mut Signal<Vec<Vec<f32>>>, labels: &mut Signal<Vec<String>>) {
     let mut mkt = MARKET.write();
-    mkt.simulate_day().await;
+    mkt.simulate_day();
 
     {
         let mut current_series = series.write();
@@ -2242,6 +2608,33 @@ async fn run_sim_one_day(series: &mut Signal<Vec<Vec<f32>>>, labels: &mut Signal
             if current_series[index].len() > MAX_SERIES_LENGTH {
                 current_series[index].remove(0);
             }
+        }
+    }
+
+    {
+        let mut current_labels = labels.write();
+        current_labels.push("|".to_string());
+        if current_labels.len() > MAX_SERIES_LENGTH {
+            current_labels.remove(0);
+        }
+    }
+}
+
+fn run_sim_one_day_single(
+    series: &mut Signal<Vec<Vec<f32>>>,
+    labels: &mut Signal<Vec<String>>,
+    coin: &CryptoCoin,
+) {
+    let mut mkt = MARKET.write();
+    mkt.simulate_day_single(coin);
+
+    {
+        let mut current_series = series.write();
+        let index = coin.index;
+
+        current_series[index].push(coin.current_price);
+        if current_series[index].len() > MAX_SERIES_LENGTH {
+            current_series[index].remove(0);
         }
     }
 
@@ -2516,7 +2909,7 @@ async fn game_loop(
 
         *MARKET.write() = mkt;
 
-        run_sim_one_day(series, labels).await;
+        run_sim_one_day(series, labels);
         MARKET.write().set_profit_factor();
 
         let seen_welcome = get_seen_welcome().await.unwrap_or_else(|_| false);
@@ -2558,13 +2951,19 @@ async fn game_loop(
             let rig_lvl = MINING_RIG().level;
             let day = GAME_TIME().day;
             cull_market(series_labels, series, rig_lvl, day.clone());
-            run_sim_one_day(series, labels).await;
+            run_sim_one_day(series, labels);
             MARKET.write().run_rug_pull(day.clone());
             MARKET.write().set_profit_factor();
             iter = 0;
         }
 
         do_mining().await;
+
+        let new_coin_cooldown = MINING_RIG().get_new_coin_cooldown();
+
+        if new_coin_cooldown > 0 {
+            MINING_RIG.write().decrement_new_coin_cooldown();
+        }
 
         TimeoutFuture::new(50).await;
     }
@@ -2707,7 +3106,7 @@ async fn recover_game_state(
                     rig_lvl,
                     day,
                 );
-                run_sim_one_day(&mut series_catchup, &mut labels_catchup).await;
+                run_sim_one_day(&mut series_catchup, &mut labels_catchup);
                 game_time_catchup.increment_15();
 
                 if i == 0 {
