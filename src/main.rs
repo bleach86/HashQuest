@@ -293,7 +293,9 @@ pub fn HeaderBelow() -> Element {
         };
 
         let can_upgrade_auto_fill = {
-            if MARKET().bank.balance > MINING_RIG().get_auto_power_fill_upgrade_cost() {
+            if MARKET().bank.balance > MINING_RIG().get_auto_power_fill_upgrade_cost()
+                && MINING_RIG().get_auto_power_fill_level() < 13
+            {
                 true
             } else {
                 false
