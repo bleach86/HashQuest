@@ -6,6 +6,11 @@ use wasm_bindgen::JsCast;
 use crate::crypto_coin::CryptoCoin;
 
 #[derive(Serialize, Deserialize, Clone, Debug, Default, PartialEq)]
+pub struct ImportExportModal {
+    pub show: bool,
+}
+
+#[derive(Serialize, Deserialize, Clone, Debug, Default, PartialEq)]
 pub struct BuyModal {
     pub show: bool,
     pub coin: Option<CryptoCoin>,
