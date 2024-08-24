@@ -20,7 +20,7 @@ pub enum GalaxyResponse {
 pub struct InfoRes {
     pub galaxy: bool,
     pub api_version: u32,
-    pub theme_preference: String,
+    pub theme: String,
     pub logged_in: bool,
 }
 
