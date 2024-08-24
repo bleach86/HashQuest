@@ -126,10 +126,8 @@ fn App() -> Element {
                             match res {
                                 Ok(_) => {
                                     info!("Added message listener for galaxy.click");
-                                    let data = SupportsReq {
-                                        action: "supports".to_string(),
-                                        saving: true,
-                                        eval: false,
+                                    let data = SaveListReq {
+                                        action: "list".to_string(),
                                     };
 
                                     info!("Sending message to galaxy.click");
