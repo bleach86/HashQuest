@@ -81,11 +81,11 @@ fn App() -> Element {
 
         info!("Message from: {}", msg_origin);
 
-        // if msg_origin == "https://galaxy.click" {
-        //     info!("Message from galaxy.click");
-        //     let data = event.data();
-        //     galaxy_response(data);
-        // }
+        if msg_origin == "https://galaxy.click" {
+            info!("Message from galaxy.click");
+            let data = event.data();
+            galaxy_response(data);
+        }
     }) as Box<dyn FnMut(_)>);
 
     use_effect(move || {
