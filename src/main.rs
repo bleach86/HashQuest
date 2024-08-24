@@ -84,6 +84,9 @@ fn App() -> Element {
         if msg_origin == "https://galaxy.click" {
             info!("Message from galaxy.click");
             let data = event.data();
+
+            info!("Data: {:?}", data);
+
             galaxy_response(data);
         }
     }) as Box<dyn FnMut(_)>);
