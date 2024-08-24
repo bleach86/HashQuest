@@ -7,10 +7,12 @@ use gloo_timers::future::TimeoutFuture;
 use gloo_utils::window;
 use wasm_bindgen::JsCast;
 use wasm_bindgen::JsValue;
+use wasm_bindgen_futures::JsFuture;
 
 mod i_db;
 use i_db::{
-    clear_game_state, get_game_state, get_seen_welcome, set_game_state, set_seen_welcome, GameState,
+    clear_game_state, game_state_from_string, get_game_state, get_seen_welcome, set_game_state,
+    set_seen_welcome, GameState,
 };
 
 mod crypto_coin;
@@ -25,7 +27,8 @@ use market::{
 };
 use mining_rig::MINING_RIG;
 use utils::{
-    command_line_output, BuyModal, CatchupModal, DoSave, GameTime, HelpModal, Paused, WelcomeModal,
+    command_line_output, BuyModal, CatchupModal, DoSave, GameTime, HelpModal, ImportExportModal,
+    Paused, WelcomeModal,
 };
 
 // Urls are relative to your Cargo.toml file
@@ -37,6 +40,8 @@ static CATCHUP_MODAL: GlobalSignal<CatchupModal> = Signal::global(|| CatchupModa
 static HELP_MODAL: GlobalSignal<HelpModal> = Signal::global(|| HelpModal::default());
 static WELCOME_MODAL: GlobalSignal<WelcomeModal> = Signal::global(|| WelcomeModal::default());
 static BUY_MODAL: GlobalSignal<BuyModal> = Signal::global(|| BuyModal::default());
+static IMPORT_EXPORT_MODAL: GlobalSignal<ImportExportModal> =
+    Signal::global(|| ImportExportModal::default());
 
 const VERSION: &str = env!("CARGO_PKG_VERSION");
 
@@ -100,6 +105,7 @@ fn App() -> Element {
         HelpModal {}
         WelcomeModal {}
         BuyModal { series_labels: series_labels.clone(), series: series.clone(), labels: labels.clone() }
+        ImportExportModal { series_labels: series_labels.clone(), series: series.clone(), labels: labels.clone() }
     }
 }
 
@@ -1935,6 +1941,12 @@ pub fn Modal() -> Element {
         }
     };
 
+    let show_import_export_modal = {
+        move || {
+            IMPORT_EXPORT_MODAL.write().show = true;
+        }
+    };
+
     rsx! {
         if IS_PAUSED().paused {
             // Backdrop
@@ -1971,13 +1983,25 @@ pub fn Modal() -> Element {
                         h4 { "Hint" }
                         p { "Add to your home screen to play offline." }
 
-                        button {
-                            class: "",
-                            style: "margin-top: 10px;",
-                            onclick: move |_| {
-                                show_help_modal();
-                            },
-                            "Help"
+                        div {
+                            class: "flex flex-row",
+                            style: "justify-content: space-between;",
+                            button {
+                                class: "",
+                                style: "margin-top: 10px;",
+                                onclick: move |_| {
+                                    show_help_modal();
+                                },
+                                "Help"
+                            }
+                            button {
+                                class: "",
+                                style: "margin-top: 10px;",
+                                onclick: move |_| {
+                                    show_import_export_modal();
+                                },
+                                "Import/Export"
+                            }
                         }
 
                         p { "Click Resume to continue your game." }
@@ -1987,6 +2011,222 @@ pub fn Modal() -> Element {
                         style: "justify-content: space-between;",
                         button { class: "", onclick: close_modal, "Resume" }
                         button { class: "", onclick: new_game, "New Game" }
+                    }
+                }
+            }
+        }
+    }
+}
+
+#[component]
+pub fn ImportExportModal(
+    series: Signal<Vec<Vec<f32>>>,
+    series_labels: Signal<Vec<String>>,
+    labels: Signal<Vec<String>>,
+) -> Element {
+    let close_modal = {
+        move |_| {
+            IMPORT_EXPORT_MODAL.write().show = false;
+        }
+    };
+
+    let clear_textarea = {
+        move || {
+            let window = window();
+            let document = window.document().expect("document not found");
+            let textarea = document
+                .get_element_by_id("import-export-textarea")
+                .expect("textarea not found")
+                .dyn_into::<web_sys::HtmlTextAreaElement>()
+                .expect("textarea not found");
+            textarea.set_value("");
+        }
+    };
+
+    let export_game = {
+        move || {
+            let series = series.clone();
+            let labels = labels.clone();
+            let series_labels = series_labels.clone();
+            use_future(move || async move {
+                let game_state = export_game_state(&series, &labels, &series_labels).await;
+
+                match game_state {
+                    Some(game_state) => {
+                        let window = window();
+                        let clipboard = window.navigator().clipboard();
+
+                        let result: js_sys::Promise = clipboard.write_text(&game_state);
+                        let future = JsFuture::from(result);
+
+                        match future.await {
+                            Ok(_) => {
+                                command_line_output("Game data copied to clipboard.");
+                                let document = window.document().expect("document not found");
+                                let export_button = document
+                                    .get_element_by_id("export-button")
+                                    .expect("export button not found")
+                                    .dyn_into::<web_sys::HtmlButtonElement>()
+                                    .expect("export button not found");
+
+                                let _ = window.alert_with_message("Game data copied to clipboard.\nUse this data to import your game later.\n\nKeep it safe!");
+
+                                export_button.set_disabled(true);
+                                export_button.set_inner_text("Copied");
+
+                                TimeoutFuture::new(2000).await;
+
+                                export_button.set_disabled(false);
+                                export_button.set_inner_text("Export");
+                            }
+                            Err(_) => {
+                                let _ = window
+                                    .alert_with_message("Failed to copy game data to clipboard.");
+                            }
+                        }
+                    }
+                    None => {}
+                }
+            })
+        }
+    };
+
+    let import_game_data = {
+        move || {
+            let win = window();
+            let document = win.document().expect("document not found");
+            let textarea = document
+                .get_element_by_id("import-export-textarea")
+                .expect("textarea not found")
+                .dyn_into::<web_sys::HtmlTextAreaElement>()
+                .expect("textarea not found");
+
+            let game_data = textarea.value();
+            let game_data = game_data.trim().to_string();
+            let game_clone = game_data.clone();
+
+            if game_data.is_empty() {
+                command_line_output("No game data to import.");
+                return;
+            }
+
+            use_future(move || {
+                let game_clone = game_clone.clone();
+                async move {
+                    let res = load_game_from_string(game_clone).await;
+                    let win = window();
+
+                    match res {
+                        true => {
+                            let _ = win.alert_with_message(
+                                "Game data imported successfully!\nThe game will now reload.",
+                            );
+                            win.location().reload().unwrap();
+                        }
+                        false => {
+                            let _ = win.alert_with_message(
+                                "Failed to import game data.\nPlease check the data and try again.",
+                            );
+                        }
+                    }
+                }
+            });
+        }
+    };
+
+    rsx! {
+        if IMPORT_EXPORT_MODAL().show {
+            // Backdrop
+            div { class: "backdrop" }
+            // Modal content
+            div { class: "window modal pauseModal",
+                div { class: "title-bar",
+                    div { class: "title-bar-text", "Import/Export" }
+                    div { class: "title-bar-controls",
+                        button {
+                            class: "close",
+                            aria_label: "Close",
+                            onclick: close_modal,
+                            ""
+                        }
+                    }
+                }
+                div { class: "window-body ",
+                    div {
+                        class: "window",
+                        style: "margin-bottom: 10px;padding: 10px;text-align: center;min-width: 225px;",
+                        h3 { "Import/Export Game" }
+
+                        br {}
+
+                        p { style: "font-size: small;",
+                            "To import a game, paste your game data below."
+                        }
+                        textarea {
+                            id: "import-export-textarea",
+                            class: "w-full",
+                            style: "font-family: 'Consolas', 'Courier New', Courier, monospace;padding: 10px;line-height: 1.75;",
+                            cols: "30",
+                            resize: "none"
+                        }
+
+                        div {
+                            class: "flex flex-row",
+                            style: "justify-content: space-between;",
+                            button {
+                                class: "",
+                                style: "margin-top: 10px;",
+                                onclick: move |_| {
+                                    import_game_data();
+                                },
+                                "Import"
+                            }
+                            button {
+                                class: "",
+                                style: "margin-top: 10px;",
+                                onclick: move |_| {
+                                    clear_textarea();
+                                },
+                                "Clear"
+                            }
+                        }
+
+                        br {}
+
+                        p { style: "font-size: small;", "To export a game, click the button below." }
+                        p { style: "font-size: small;",
+                            "Save the copied data in a safe place to import your game later."
+                        }
+
+                        div {
+                            class: "flex flex-row",
+                            style: "justify-content: space-between;",
+                            button {
+                                id: "export-button",
+                                class: "",
+                                style: "margin-top: 10px;",
+                                onclick: move |_| {
+                                    export_game();
+                                },
+                                "Export"
+                            }
+                        }
+                        p { style: "font-size: small;margin-top: 10px;",
+                            span { "We recommend using " }
+                            span {
+                                a {
+                                    href: "https://e2epaste.xyz",
+                                    target: "_blank",
+                                    "e2epaste.xyz"
+                                }
+                            }
+                            span { " to securly transfer your game data to a different device." }
+                        }
+                    }
+                    div {
+                        class: "flex flex-row",
+                        style: "justify-content: space-between;",
+                        button { class: "", onclick: close_modal, "Close" }
                     }
                 }
             }
@@ -2956,6 +3196,7 @@ async fn game_loop(
             run_sim_one_day(series, labels);
             MARKET.write().run_rug_pull(day.clone());
             MARKET.write().set_profit_factor();
+
             iter = 0;
         }
 
@@ -3192,6 +3433,64 @@ async fn recover_game_state(
     }
 
     return true;
+}
+
+async fn load_game_from_string(data: String) -> bool {
+    let win = window();
+
+    let game_state_res = win.atob(&data);
+
+    let game_state_str = match game_state_res {
+        Ok(game_state_str) => game_state_str,
+        Err(_) => {
+            command_line_output("Failed to load game state.");
+            return false;
+        }
+    };
+
+    let game_state = game_state_from_string(&game_state_str);
+
+    match game_state {
+        Ok(game_state) => {
+            set_game_state(&game_state).await;
+            true
+        }
+        Err(_) => {
+            command_line_output("Failed to load game state.");
+            false
+        }
+    }
+}
+
+async fn export_game_state(
+    series: &Signal<Vec<Vec<f32>>>,
+    labels: &Signal<Vec<String>>,
+    series_labels: &Signal<Vec<String>>,
+) -> Option<String> {
+    let real_time = web_sys::js_sys::Date::new_0();
+
+    let game_state = GameState {
+        market: MARKET.read().clone(),
+        game_time: GAME_TIME.read().clone(),
+        labels: labels.read().clone(),
+        series: series.read().clone(),
+        series_labels: series_labels.read().clone(),
+        paused: IS_PAUSED.read().clone(),
+        real_time: real_time.get_time() as i64 / 1000,
+        selection: SELECTION.read().clone(),
+        mining_rig: MINING_RIG.read().clone(),
+    };
+
+    let game_state_str = game_state.to_string();
+
+    let window = window();
+
+    let base64 = window.btoa(&game_state_str);
+
+    match base64 {
+        Ok(base64) => Some(base64),
+        Err(_) => None,
+    }
 }
 
 async fn save_game_state(

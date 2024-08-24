@@ -1,6 +1,6 @@
 [package]
 name = "hash-quest"
-version = "1.1.1"
+version = "1.1.2"
 authors = ["bleach86 <14421739+bleach86@users.noreply.github.com>"]
 edition = "2021"
 
@@ -21,7 +21,7 @@ wasm-bindgen = "0.2.93"
 wasm-bindgen-futures = "0.4.42"
 serde-wasm-bindgen = "0.6.5"
 console_error_panic_hook = "0.1.7"
-web-sys = { version = "0.3.69", features = [
+web-sys = { version = "0.3.70", features = [
     "Crypto",
     "SubtleCrypto",
     "IdbFactory",
@@ -31,6 +31,9 @@ web-sys = { version = "0.3.69", features = [
     "HtmlCanvasElement",
     "CanvasRenderingContext2d",
     "HtmlInputElement",
+    "Navigator",
+    "Clipboard",
+    "HtmlButtonElement",
 
 ] }
 js-sys = "0.3.69"

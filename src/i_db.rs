@@ -6,6 +6,7 @@ use web_sys::DomException;
 use crate::market::Market;
 use crate::mining_rig::MiningRig;
 use crate::utils::{GameTime, Paused};
+use js_sys::JSON;
 
 #[derive(Serialize, Deserialize, Clone, Debug, Default)]
 pub struct GameState {
@@ -18,6 +19,22 @@ pub struct GameState {
     pub real_time: i64,
     pub selection: Selection,
     pub mining_rig: MiningRig,
+}
+
+impl GameState {
+    pub fn to_string(&self) -> String {
+        serde_wasm_bindgen::to_value(self)
+            .map(|value| JSON::stringify(&value).unwrap())
+            .unwrap()
+            .into()
+    }
+}
+
+pub fn game_state_from_string(json: &str) -> Result<GameState, JsValue> {
+    let js_value = JSON::parse(json)?;
+
+    serde_wasm_bindgen::from_value::<GameState>(js_value)
+        .map_err(|e| JsValue::from_str(&e.to_string()))
 }
 
 #[derive(Serialize, Deserialize, Clone, Debug, Default)]
