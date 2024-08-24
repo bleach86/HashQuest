@@ -112,7 +112,7 @@ fn App() -> Element {
                     info!("Referrer: {}", referrer);
 
                     match referrer.as_str() {
-                        "" => {
+                        "" | "https://galaxy.click/" => {
                             let win = window();
 
                             let res = win.add_event_listener_with_callback(
