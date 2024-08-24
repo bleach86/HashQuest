@@ -81,7 +81,7 @@ fn App() -> Element {
 
         info!("Message from: {}", msg_origin);
 
-        if msg_origin == "https://galaxy.click/" {
+        if msg_origin == "https://galaxy.click" {
             info!("Message from galaxy.click");
             let data = event.data();
             galaxy_response(data);
