@@ -132,20 +132,20 @@ pub fn galaxy_response(js_value: JsValue) {
                 info!("Handling deleted: {:?}", deleted);
             }
             GalaxyResponse::Info(info) => {
-                info!("Handling info: {:?}", info.logged_in);
+                info!("Handling info: {:?}", info);
 
-                let data = serde_wasm_bindgen::to_value(&SupportsReq {
-                    action: "supports".to_string(),
-                    saving: true,
-                    eval: true,
-                });
+                // let data = serde_wasm_bindgen::to_value(&SupportsReq {
+                //     action: "supports".to_string(),
+                //     saving: true,
+                //     eval: false,
+                // });
 
-                match data {
-                    Ok(data) => send_message(data),
-                    Err(err) => {
-                        info!("Failed to serialize SupportsReq: {:?}", err);
-                    }
-                }
+                // match data {
+                //     Ok(data) => send_message(data),
+                //     Err(err) => {
+                //         info!("Failed to serialize SupportsReq: {:?}", err);
+                //     }
+                // }
             }
         },
         Err(err) => {
