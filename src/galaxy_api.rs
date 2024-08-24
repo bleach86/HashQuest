@@ -104,7 +104,7 @@ pub fn send_message(data: JsValue) {
             Some(win) => {
                 info!("Sending message to parent window");
 
-                let _ = win.post_message(&data, "http://127.0.0.1:8081");
+                let _ = win.post_message(&data, "https://galaxy.click");
             }
             None => {
                 info!("No parent window found");

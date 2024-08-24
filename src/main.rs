@@ -23,7 +23,7 @@ mod mining_rig;
 mod utils;
 
 use crypto_coin::CryptoCoin;
-use galaxy_api::galaxy_response;
+use galaxy_api::{galaxy_response, send_message, SaveListReq, SupportsReq};
 use market::{
     clear_selected_coin, cull_market, gen_random_coin_with_set_index, replace_coin, GAME_TIME,
     MARKET, MAX_SERIES_LENGTH, SELECTION,
@@ -81,11 +81,11 @@ fn App() -> Element {
 
         info!("Message from: {}", msg_origin);
 
-        if msg_origin == "http://127.0.0.1:8081" || msg_origin == "http://localhost:8081" {
-            info!("Message from galaxy.click");
-            let data = event.data();
-            galaxy_response(data);
-        }
+        // if msg_origin == "https://galaxy.click" {
+        //     info!("Message from galaxy.click");
+        //     let data = event.data();
+        //     galaxy_response(data);
+        // }
     }) as Box<dyn FnMut(_)>);
 
     use_effect(move || {
@@ -123,6 +123,15 @@ fn App() -> Element {
                             match res {
                                 Ok(_) => {
                                     info!("Added message listener for galaxy.click");
+                                    let data = SaveListReq {
+                                        action: "list".to_string(),
+                                    };
+
+                                    info!("Sending message to galaxy.click");
+
+                                    let js_data = serde_wasm_bindgen::to_value(&data).unwrap();
+
+                                    send_message(js_data);
                                 }
                                 Err(_) => {
                                     info!("Failed to add message listener for galaxy.click");
