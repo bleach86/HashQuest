@@ -5,6 +5,7 @@ use dioxus_charts::LineChart;
 use dioxus_logger::tracing::{info, Level};
 use gloo_timers::future::TimeoutFuture;
 use gloo_utils::window;
+use wasm_bindgen::closure::Closure;
 use wasm_bindgen::JsCast;
 use wasm_bindgen::JsValue;
 use wasm_bindgen_futures::JsFuture;
@@ -16,11 +17,13 @@ use i_db::{
 };
 
 mod crypto_coin;
+mod galaxy_api;
 mod market;
 mod mining_rig;
 mod utils;
 
 use crypto_coin::CryptoCoin;
+use galaxy_api::galaxy_response;
 use market::{
     clear_selected_coin, cull_market, gen_random_coin_with_set_index, replace_coin, GAME_TIME,
     MARKET, MAX_SERIES_LENGTH, SELECTION,
@@ -73,6 +76,67 @@ fn App() -> Element {
             game_loop(&mut series, &mut labels, &mut series_labels).await;
         }
     });
+    let listener = Closure::wrap(Box::new(move |event: web_sys::MessageEvent| {
+        let msg_origin: String = event.origin();
+
+        info!("Message from: {}", msg_origin);
+
+        if msg_origin == "http://127.0.0.1:8081" || msg_origin == "http://localhost:8081" {
+            info!("Message from galaxy.click");
+            let data = event.data();
+            galaxy_response(data);
+        }
+    }) as Box<dyn FnMut(_)>);
+
+    use_effect(move || {
+        let win = window();
+
+        let win_self = win.self_();
+        let win_top_res = win.top();
+
+        let win_top = match win_top_res {
+            Ok(win_top) => match win_top {
+                Some(win_top) => win_top,
+                None => win_self.clone(),
+            },
+            Err(_) => win_self.clone(),
+        };
+
+        if win_self != win_top {
+            let win = window();
+            let document = win.document();
+            match document {
+                Some(document) => {
+                    let referrer = document.referrer();
+
+                    info!("Referrer: {}", referrer);
+
+                    match referrer.as_str() {
+                        "" => {
+                            let win = window();
+
+                            let res = win.add_event_listener_with_callback(
+                                "message",
+                                listener.as_ref().unchecked_ref(),
+                            );
+
+                            match res {
+                                Ok(_) => {
+                                    info!("Added message listener for galaxy.click");
+                                }
+                                Err(_) => {
+                                    info!("Failed to add message listener for galaxy.click");
+                                }
+                            }
+                        }
+                        _ => {}
+                    }
+                }
+                None => {}
+            }
+        }
+    });
+
     rsx! {
         link { rel: "stylesheet", href: "/98css/98.css" }
         link { rel: "stylesheet", href: "main.css?v=1.0" }
