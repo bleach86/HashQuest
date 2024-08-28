@@ -87,8 +87,6 @@ fn App() -> Element {
         if msg_origin == "https://galaxy.click" {
             let data = event.data();
 
-            info!("Data: {:?}", data);
-
             spawn_local(async move {
                 galaxy_response(data).await;
             });

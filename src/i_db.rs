@@ -14,9 +14,6 @@ use js_sys::JSON;
 pub struct GameState {
     pub market: Market,
     pub game_time: GameTime,
-    //pub labels: Vec<String>,
-    //pub series: Vec<Vec<f32>>,
-    //pub series_labels: Vec<String>,
     pub paused: Paused,
     pub real_time: i64,
     pub selection: Selection,

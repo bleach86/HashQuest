@@ -430,8 +430,6 @@ pub async fn galaxy_info() {
             }
         };
 
-        info!("Checking galaxy info status: {:?}", galaxy_host);
-
         if galaxy_host.info_check_status == Some(true) {
             break;
         }
