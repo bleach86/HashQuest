@@ -1,6 +1,6 @@
 #![allow(dead_code)]
+
 use dioxus::prelude::*;
-use dioxus_logger::tracing::info;
 use gloo_utils::window;
 use serde::{Deserialize, Serialize};
 use wasm_bindgen::JsCast;
@@ -8,12 +8,19 @@ use wasm_bindgen::JsCast;
 use crate::crypto_coin::CryptoCoin;
 use crate::i_db::Selection;
 use crate::mining_rig::{Bank, MINING_RIG};
-use crate::utils::{command_line_output, rand_from_range, GameTime};
+use crate::utils::{command_line_output, rand_from_range, truncate_price, GameTime};
 
 pub const MAX_SERIES_LENGTH: usize = 96;
 pub static MARKET: GlobalSignal<Market> = Signal::global(|| Market::new());
 pub static SELECTION: GlobalSignal<Selection> = Signal::global(|| Selection::default());
 pub static GAME_TIME: GlobalSignal<GameTime> = Signal::global(|| GameTime::new());
+
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+pub struct MarketChart {
+    pub labels: Vec<String>,
+    pub series: Vec<Vec<f32>>,
+    pub series_labels: Vec<String>,
+}
 
 #[derive(Debug, Clone, PartialEq, Default, Serialize, Deserialize)]
 pub struct Market {
@@ -88,6 +95,7 @@ impl Market {
             self.coins[index].current_price = 0.0;
             self.coins[index].index = 100;
             self.coins[index].death_date = Some(day);
+            self.coins[index].prices.clear();
 
             let bal = self.coins[index].balance;
 
@@ -207,10 +215,6 @@ impl Market {
         if let Some(coin) = self.coins.iter_mut().find(|c| c.name == coin.name) {
             let cost = coin.current_price * amount;
 
-            info!("Buying {} of {} for ${}", amount, coin.name, cost);
-
-            info!("Bank balance: ${}", self.bank.balance);
-
             if self.bank.withdraw(cost as f64) {
                 coin.balance += amount;
                 return true;
@@ -251,6 +255,72 @@ impl Market {
             .find(|c| c.name == coin.name)
             .map(|c| c.current_price)
             .unwrap_or(0.0)
+    }
+
+    pub fn truncate_prices(&mut self) {
+        for coin in &mut self.coins {
+            for price in coin.prices.iter_mut() {
+                *price = truncate_price(*price);
+            }
+        }
+    }
+
+    fn get_sersies(&self) -> Vec<Vec<f32>> {
+        let mut series = Vec::new();
+
+        for coin in &self.index_sorted_coins(false) {
+            series.push(coin.prices.clone());
+        }
+
+        series
+    }
+
+    fn get_series_labels(&self) -> Vec<String> {
+        let mut labels = Vec::new();
+
+        for coin in &self.index_sorted_coins(false) {
+            labels.push(coin.name.clone());
+        }
+
+        labels
+    }
+
+    fn get_labels(&self) -> Vec<String> {
+        let mut max_len = 0;
+
+        for coin in &self.coins {
+            if coin.prices.len() > max_len {
+                max_len = coin.prices.len();
+            }
+        }
+
+        let mut labels = Vec::new();
+
+        for _ in 0..max_len {
+            labels.push("|".to_string());
+        }
+
+        labels
+    }
+
+    pub fn get_chart(&self) -> MarketChart {
+        let labels = self.get_labels();
+        let series = self.get_sersies();
+        let series_labels = self.get_series_labels();
+
+        MarketChart {
+            labels,
+            series,
+            series_labels,
+        }
+    }
+
+    pub fn reverse_price_history(&mut self) {
+        for coin in &mut self.coins {
+            let reverse_list = coin.prices.clone().into_iter().rev().collect::<Vec<f32>>();
+
+            coin.prices = reverse_list;
+        }
     }
 }
 
