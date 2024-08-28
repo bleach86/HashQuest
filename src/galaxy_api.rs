@@ -392,6 +392,8 @@ pub async fn galaxy_info() {
     let check_time = web_sys::js_sys::Date::new_0();
     let check_time = check_time.get_time();
 
+    info!("Checking galaxy info");
+
     let data = serde_wasm_bindgen::to_value(&InfoReq {
         action: "info".to_string(),
         echo: Some("sheet".to_string()),
@@ -427,6 +429,8 @@ pub async fn galaxy_info() {
                 return;
             }
         };
+
+        info!("Checking galaxy info status: {:?}", galaxy_host);
 
         if galaxy_host.info_check_status == Some(true) {
             break;

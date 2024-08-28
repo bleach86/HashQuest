@@ -87,6 +87,8 @@ fn App() -> Element {
         if msg_origin == "https://galaxy.click" {
             let data = event.data();
 
+            info!("Data: {:?}", data);
+
             spawn_local(async move {
                 galaxy_response(data).await;
             });
@@ -127,7 +129,7 @@ fn App() -> Element {
                     info!("Referrer: {}", referrer);
 
                     match referrer.as_str() {
-                        "" | "https://galaxy.click/" | "http://192.168.12.215:4321/" => {
+                        "" | "https://galaxy.click/" => {
                             let win = window();
 
                             let res = win.add_event_listener_with_callback(
@@ -151,7 +153,6 @@ fn App() -> Element {
 
                                         galaxy_info().await;
                                         game_ready.set(true);
-                                        //GALAXY_LOADING_MODAL.write().show = false;
                                     });
                                 }
                                 Err(_) => {
@@ -3768,9 +3769,11 @@ async fn recover_game_state(
 
                         if galaxy_save_time > local_save_time {
                             // Galaxy save is newer
+                            info!("Galaxy save is newer");
                             *GALAXY_SAVE_DETAILS.write() = Some(galaxy_save_details);
                             galaxy_save_data
                         } else {
+                            info!("Local save is newer");
                             // Local save is newer
                             let galaxy_save_details = match local_save_res {
                                 Some(local_save) => local_save.galaxy_save_details,
