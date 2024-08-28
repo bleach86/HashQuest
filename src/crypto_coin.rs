@@ -5,7 +5,7 @@ use std::ops::Range;
 
 use crate::market::{GAME_TIME, MAX_SERIES_LENGTH};
 use crate::mining_rig::MINING_RIG;
-use crate::utils::{command_line_output, get_season, rand_from_range};
+use crate::utils::{command_line_output, get_season, rand_from_range, truncate_price};
 
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 pub struct CryptoCoin {
@@ -13,7 +13,7 @@ pub struct CryptoCoin {
     pub initial_price: f32,
     pub current_price: f32,
     pub volatility: Range<f32>,
-    pub prices: VecDeque<f32>,
+    pub prices: Vec<f32>,
     pub trend: f32,
     pub trend_direction: VecDeque<bool>,
     pub active: bool,
@@ -50,7 +50,7 @@ impl CryptoCoin {
             initial_price,
             current_price: initial_price,
             volatility,
-            prices: VecDeque::from(vec![initial_price]),
+            prices: vec![initial_price],
             trend: 0.0,
             trend_direction: VecDeque::from(vec![false, false, false]),
             active: true,
@@ -283,10 +283,12 @@ impl CryptoCoin {
             }
         }
 
-        self.prices.push_front(self.current_price);
+        self.current_price = truncate_price(self.current_price);
+
+        self.prices.push(self.current_price);
 
         if self.prices.len() > MAX_SERIES_LENGTH {
-            self.prices.pop_back();
+            self.prices.remove(0);
         }
 
         self.trend_direction

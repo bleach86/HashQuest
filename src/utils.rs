@@ -6,6 +6,20 @@ use wasm_bindgen::JsCast;
 use crate::crypto_coin::CryptoCoin;
 
 #[derive(Serialize, Deserialize, Clone, Debug, Default, PartialEq)]
+pub struct GalaxySaveDetails {
+    pub slot: Option<u32>,
+    pub active: bool,
+    pub save_interval: u32,
+    pub last_save: f64,
+    pub force_save: bool,
+}
+
+#[derive(Serialize, Deserialize, Clone, Debug, Default, PartialEq)]
+pub struct GalaxyLoadingModal {
+    pub show: bool,
+}
+
+#[derive(Serialize, Deserialize, Clone, Debug, Default, PartialEq)]
 pub struct ImportExportModal {
     pub show: bool,
 }
@@ -184,4 +198,9 @@ pub fn command_line_output(msg: &str) {
     command_line.set_value(&new_value);
 
     command_line.set_scroll_top(command_line.scroll_height());
+}
+
+pub fn truncate_price(value: f32) -> f32 {
+    let factor = 10f32.powi(5); // 10^5 = 100000
+    (value * factor).round() / factor
 }

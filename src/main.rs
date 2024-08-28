@@ -1,4 +1,5 @@
 #![allow(non_snake_case)]
+
 use dioxus::html::input_data::MouseButton;
 use dioxus::prelude::*;
 use dioxus_charts::LineChart;
@@ -8,12 +9,13 @@ use gloo_utils::window;
 use wasm_bindgen::closure::Closure;
 use wasm_bindgen::JsCast;
 use wasm_bindgen::JsValue;
-use wasm_bindgen_futures::JsFuture;
+use wasm_bindgen_futures::{spawn_local, JsFuture};
 
 mod i_db;
 use i_db::{
-    clear_game_state, game_state_from_string, get_game_state, get_seen_welcome, set_game_state,
-    set_seen_welcome, GameState,
+    clear_game_state, game_state_from_string, get_galaxy_host, get_game_state, get_seen_welcome,
+    set_galaxy_host, set_galaxy_response_queue, set_galaxy_save_list, set_game_state,
+    set_seen_welcome, GalaxyHost, GalaxyResponseQueue, GalaxySaveList, GameState,
 };
 
 mod crypto_coin;
@@ -23,15 +25,18 @@ mod mining_rig;
 mod utils;
 
 use crypto_coin::CryptoCoin;
-use galaxy_api::{galaxy_response, send_message, SaveListReq, SupportsReq};
+use galaxy_api::{
+    delete_cloud_save, do_cloud_save, fetch_save_list, find_save_slot, galaxy_info,
+    galaxy_response, get_galaxy_save_data,
+};
 use market::{
     clear_selected_coin, cull_market, gen_random_coin_with_set_index, replace_coin, GAME_TIME,
     MARKET, MAX_SERIES_LENGTH, SELECTION,
 };
 use mining_rig::MINING_RIG;
 use utils::{
-    command_line_output, BuyModal, CatchupModal, DoSave, GameTime, HelpModal, ImportExportModal,
-    Paused, WelcomeModal,
+    command_line_output, BuyModal, CatchupModal, DoSave, GalaxyLoadingModal, GalaxySaveDetails,
+    GameTime, HelpModal, ImportExportModal, Paused, WelcomeModal,
 };
 
 // Urls are relative to your Cargo.toml file
@@ -45,6 +50,9 @@ static WELCOME_MODAL: GlobalSignal<WelcomeModal> = Signal::global(|| WelcomeModa
 static BUY_MODAL: GlobalSignal<BuyModal> = Signal::global(|| BuyModal::default());
 static IMPORT_EXPORT_MODAL: GlobalSignal<ImportExportModal> =
     Signal::global(|| ImportExportModal::default());
+static GALAXY_LOADING_MODAL: GlobalSignal<GalaxyLoadingModal> =
+    Signal::global(|| GalaxyLoadingModal::default());
+static GALAXY_SAVE_DETAILS: GlobalSignal<Option<GalaxySaveDetails>> = Signal::global(|| None);
 
 const VERSION: &str = env!("CARGO_PKG_VERSION");
 
@@ -68,28 +76,32 @@ fn App() -> Element {
     let labels: Signal<Vec<String>> = use_signal(|| vec![String::new()]);
 
     let series_labels: Signal<Vec<String>> = use_signal(|| Vec::new());
-    use_future(move || {
-        let mut series = series.clone();
-        let mut labels = labels.clone();
-        let mut series_labels = series_labels.clone();
-        async move {
-            game_loop(&mut series, &mut labels, &mut series_labels).await;
-        }
-    });
+
+    let mut game_ready: Signal<bool> = use_signal(|| false);
+
     let listener = Closure::wrap(Box::new(move |event: web_sys::MessageEvent| {
         let msg_origin: String = event.origin();
 
         info!("Message from: {}", msg_origin);
 
         if msg_origin == "https://galaxy.click" {
-            info!("Message from galaxy.click");
             let data = event.data();
 
-            info!("Data: {:?}", data);
-
-            galaxy_response(data);
+            spawn_local(async move {
+                galaxy_response(data).await;
+            });
         }
     }) as Box<dyn FnMut(_)>);
+
+    let galaxy_db_init = use_future(move || async move {
+        let galaxy_host = GalaxyHost::default();
+        let galaxy_list = GalaxySaveList::new();
+        let galaxy_queue = GalaxyResponseQueue { queue: Vec::new() };
+
+        set_galaxy_host(&galaxy_host).await;
+        set_galaxy_save_list(&galaxy_list).await;
+        set_galaxy_response_queue(&galaxy_queue).await;
+    });
 
     use_effect(move || {
         let win = window();
@@ -123,18 +135,23 @@ fn App() -> Element {
                                 listener.as_ref().unchecked_ref(),
                             );
 
+                            GALAXY_LOADING_MODAL.write().show = true;
+
                             match res {
                                 Ok(_) => {
-                                    info!("Added message listener for galaxy.click");
-                                    let data = SaveListReq {
-                                        action: "list".to_string(),
-                                    };
+                                    use_future(move || async move {
+                                        info!("Added message listener for galaxy.click");
 
-                                    info!("Sending message to galaxy.click");
+                                        loop {
+                                            if galaxy_db_init.finished() {
+                                                break;
+                                            }
+                                            TimeoutFuture::new(100).await;
+                                        }
 
-                                    let js_data = serde_wasm_bindgen::to_value(&data).unwrap();
-
-                                    send_message(js_data);
+                                        galaxy_info().await;
+                                        game_ready.set(true);
+                                    });
                                 }
                                 Err(_) => {
                                     info!("Failed to add message listener for galaxy.click");
@@ -146,7 +163,27 @@ fn App() -> Element {
                 }
                 None => {}
             }
+        } else {
+            game_ready.set(true);
         }
+
+        use_future(move || {
+            let mut series = series.clone();
+            let mut labels = labels.clone();
+            let mut series_labels = series_labels.clone();
+            let game_ready = game_ready.clone();
+
+            async move {
+                loop {
+                    if game_ready() {
+                        break;
+                    }
+                    TimeoutFuture::new(100).await;
+                }
+
+                game_loop(&mut series, &mut labels, &mut series_labels).await;
+            }
+        });
     });
 
     rsx! {
@@ -182,6 +219,7 @@ fn App() -> Element {
         WelcomeModal {}
         BuyModal { series_labels: series_labels.clone(), series: series.clone(), labels: labels.clone() }
         ImportExportModal { series_labels: series_labels.clone(), series: series.clone(), labels: labels.clone() }
+        GalaxyLoadingModal {}
     }
 }
 
@@ -1614,6 +1652,12 @@ pub fn ProgressBar(progress_id: String, progress_message: String) -> Element {
 pub fn Header() -> Element {
     let pause_game = {
         move |_| async move {
+            if let Some(mut galaxy_save_details) = GALAXY_SAVE_DETAILS() {
+                if galaxy_save_details.active && galaxy_save_details.slot.is_some() {
+                    galaxy_save_details.force_save = true;
+                    *GALAXY_SAVE_DETAILS.write() = Some(galaxy_save_details);
+                }
+            }
             IS_PAUSED.write().toggle();
         }
     };
@@ -1989,6 +2033,12 @@ pub fn Modal() -> Element {
         move |_| {
             IS_PAUSED.write().toggle();
             DO_SAVE.write().save = true;
+            if let Some(mut galaxy_save_details) = GALAXY_SAVE_DETAILS() {
+                if galaxy_save_details.active && galaxy_save_details.slot.is_some() {
+                    galaxy_save_details.force_save = true;
+                    *GALAXY_SAVE_DETAILS.write() = Some(galaxy_save_details);
+                }
+            }
         }
     };
 
@@ -2005,6 +2055,30 @@ pub fn Modal() -> Element {
 
                 if confirm {
                     clear_game_state().await;
+
+                    let galaxy_host = get_galaxy_host().await;
+
+                    match galaxy_host {
+                        Ok(galaxy_host) => match galaxy_host {
+                            Some(galaxy_host) => {
+                                if galaxy_host.galaxy && galaxy_host.logged_in {
+                                    if let Some(galaxy_save_details) = GALAXY_SAVE_DETAILS() {
+                                        if galaxy_save_details.active
+                                            && galaxy_save_details.slot.is_some()
+                                        {
+                                            info!("Deleting cloud save");
+
+                                            let save_slot = galaxy_save_details.slot.unwrap();
+                                            delete_cloud_save(save_slot).await;
+                                        }
+                                    };
+                                }
+                            }
+                            None => {}
+                        },
+                        Err(_) => {}
+                    }
+
                     window.location().reload().unwrap();
                 }
             });
@@ -2022,6 +2096,9 @@ pub fn Modal() -> Element {
             IMPORT_EXPORT_MODAL.write().show = true;
         }
     };
+
+    let auto_save_time_opts: Vec<u32> = Vec::from([5, 10, 15, 20, 30, 60, 90, 120, 180, 240, 300]);
+    let mut selected_time: Signal<u32> = use_signal(|| 30);
 
     rsx! {
         if IS_PAUSED().paused {
@@ -2058,6 +2135,67 @@ pub fn Modal() -> Element {
 
                         h4 { "Hint" }
                         p { "Add to your home screen to play offline." }
+
+                        br {}
+
+                        if GALAXY_SAVE_DETAILS().is_some() {
+                            div { class: "flex flex-col",
+                                div {
+                                    input {
+                                        id: "cloud-save",
+                                        class: "",
+                                        style: "",
+                                        r#type: "checkbox",
+                                        checked: GALAXY_SAVE_DETAILS().as_ref().unwrap().active,
+                                        onclick: move |_| {
+                                            let toggle_autosave = toggle_autosave.clone();
+                                            async move {
+                                                toggle_autosave().await;
+                                            }
+                                        },
+                                        prevent_default: "onclick"
+                                    }
+                                    label { class: "", r#for: "cloud-save",
+                                        "Autosave to Galaxy.click Cloud"
+                                    }
+                                }
+                                if GALAXY_SAVE_DETAILS().as_ref().unwrap().active {
+                                    div {
+                                        style: "margin-top: 10px;",
+                                        class: "flex flex-col",
+                                        label { r#for: "auto-save-time",
+                                            "Auto Cloud Save Time (seconds): "
+                                        }
+                                        select {
+                                            id: "auto-save-time",
+                                            value: "{GALAXY_SAVE_DETAILS().unwrap().save_interval}",
+                                            oninput: move |event| {
+                                                if let Ok(value) = event.value().parse::<u32>() {
+                                                    selected_time.set(value);
+                                                    if let Some(mut galaxy_save_details) = GALAXY_SAVE_DETAILS() {
+                                                        if galaxy_save_details.active && galaxy_save_details.slot.is_some() {
+                                                            let save_interval = selected_time();
+                                                            galaxy_save_details.save_interval = save_interval;
+                                                            galaxy_save_details.force_save = true;
+                                                            *GALAXY_SAVE_DETAILS.write() = Some(galaxy_save_details);
+                                                            DO_SAVE.write().save = true;
+                                                        }
+                                                    }
+                                                }
+                                            },
+                                            // Generate the dropdown options
+                                            for time in auto_save_time_opts.iter() {
+                                                option {
+                                                    value: "{time}",
+                                                    selected: *time == selected_time(),
+                                                    "{time}"
+                                                }
+                                            }
+                                        }
+                                    }
+                                }
+                            }
+                        }
 
                         div {
                             class: "flex flex-row",
@@ -2121,11 +2259,23 @@ pub fn ImportExportModal(
 
     let export_game = {
         move || {
-            let series = series.clone();
-            let labels = labels.clone();
-            let series_labels = series_labels.clone();
             use_future(move || async move {
-                let game_state = export_game_state(&series, &labels, &series_labels).await;
+                let game_state_res = get_game_state().await;
+
+                let game_state_opt = match game_state_res {
+                    Ok(game_state) => game_state,
+                    Err(_) => None,
+                };
+
+                let game_state = match game_state_opt {
+                    Some(game_state) => game_state,
+                    None => {
+                        let _ = window().alert_with_message("Failed to export game data.");
+                        return;
+                    }
+                };
+
+                let game_state = export_game_state(&game_state).await;
 
                 match game_state {
                     Some(game_state) => {
@@ -2177,12 +2327,25 @@ pub fn ImportExportModal(
                 .dyn_into::<web_sys::HtmlTextAreaElement>()
                 .expect("textarea not found");
 
+            let import_button = document
+                .get_element_by_id("import-button")
+                .expect("import button not found")
+                .dyn_into::<web_sys::HtmlButtonElement>()
+                .expect("import button not found");
+
+            import_button.set_disabled(true);
+            import_button.set_inner_text("Importing...");
+
             let game_data = textarea.value();
             let game_data = game_data.trim().to_string();
             let game_clone = game_data.clone();
 
             if game_data.is_empty() {
                 command_line_output("No game data to import.");
+
+                import_button.set_disabled(false);
+                import_button.set_inner_text("Import");
+
                 return;
             }
 
@@ -2203,6 +2366,17 @@ pub fn ImportExportModal(
                             let _ = win.alert_with_message(
                                 "Failed to import game data.\nPlease check the data and try again.",
                             );
+
+                            let document = win.document().expect("document not found");
+
+                            let import_button = document
+                                .get_element_by_id("import-button")
+                                .expect("import button not found")
+                                .dyn_into::<web_sys::HtmlButtonElement>()
+                                .expect("import button not found");
+
+                            import_button.set_disabled(false);
+                            import_button.set_inner_text("Import");
                         }
                     }
                 }
@@ -2250,6 +2424,7 @@ pub fn ImportExportModal(
                             class: "flex flex-row",
                             style: "justify-content: space-between;",
                             button {
+                                id: "import-button",
                                 class: "",
                                 style: "margin-top: 10px;",
                                 onclick: move |_| {
@@ -2706,7 +2881,7 @@ pub fn CatchupModal() -> Element {
                             "Speed up factor: {CATCHUP_MODAL().speed_up:.2}x"
                         }
 
-                        ProgressBar { progress_id: "catch-up".to_string(), progress_message: "shit".to_string() }
+                        ProgressBar { progress_id: "catch-up".to_string(), progress_message: "".to_string() }
                         div {
                             class: "flex flex-row",
                             style: "justify-content: space-between;margin:3px;",
@@ -2730,6 +2905,46 @@ pub fn CatchupModal() -> Element {
                                     }
                                 }
                             }
+                        }
+                    }
+                }
+            }
+        }
+    }
+}
+
+#[component]
+pub fn GalaxyLoadingModal() -> Element {
+    rsx! {
+        if GALAXY_LOADING_MODAL().show {
+            // Backdrop
+            div { class: "backdrop" }
+            // Modal content
+            div {
+                class: "window modal container m-3 overflow-hidden h-fit",
+                style: "max-width: 350px;min-width:225px;",
+                div { class: "title-bar",
+                    div { class: "title-bar-text", "Copying..." }
+                    div { class: "title-bar-controls",
+                        button { class: "close", aria_label: "Close", "" }
+                    }
+                }
+                div { class: "window-body ",
+                    div { class: "p-6  mx-auto",
+
+                        div { class: "file-animation",
+                            div { class: "folder" }
+                            div { class: "paper",
+
+                                img { src: "/file_windows-2.png" }
+                            }
+                            div { class: "folder" }
+                        }
+
+                        p {
+                            class: "",
+                            style: "margin-top: 10px;margin-bottom:10px;",
+                            "Loading Galaxy API..."
                         }
                     }
                 }
@@ -2907,6 +3122,50 @@ async fn update_progess_bar(progress_id: &str, progress: f32) {
     progress_bar
         .set_attribute("style", &format!("width: {}%", progress))
         .unwrap();
+}
+
+async fn toggle_autosave() {
+    let save_details = GALAXY_SAVE_DETAILS().clone();
+
+    info!("Toggling autosave");
+
+    if let Some(mut galaxy_save_details) = save_details {
+        if !galaxy_save_details.active {
+            info!("Autosave to cloud enabled");
+
+            GALAXY_LOADING_MODAL.write().show = true;
+            fetch_save_list().await;
+            let save_slot = find_save_slot().await;
+
+            GALAXY_LOADING_MODAL.write().show = false;
+
+            if let Some(save_slot) = save_slot {
+                galaxy_save_details.slot = Some(save_slot);
+                galaxy_save_details.active = true;
+
+                *GALAXY_SAVE_DETAILS.write() = Some(galaxy_save_details.clone());
+                DO_SAVE.write().save = true;
+
+                do_cloud_save(save_slot).await;
+            } else {
+                let win = window();
+                let msg = "No save slot found. Please delete a save slot and refresh the page.";
+                let _ = win.alert_with_message(msg);
+            }
+        } else {
+            info!("Autosave to cloud disabled");
+            galaxy_save_details.active = false;
+
+            if let Some(save_slot) = galaxy_save_details.slot.take() {
+                delete_cloud_save(save_slot).await;
+            }
+
+            *GALAXY_SAVE_DETAILS.write() = Some(galaxy_save_details.clone());
+            DO_SAVE.write().save = true;
+        }
+    } else {
+        info!("No save details found");
+    }
 }
 
 fn run_sim_one_day(series: &mut Signal<Vec<Vec<f32>>>, labels: &mut Signal<Vec<String>>) {
@@ -3239,15 +3498,8 @@ async fn game_loop(
 
     let mut iter = 0;
 
-    let series_clone = series.clone();
-    let labels_clone = labels.clone();
-    let series_labels_clone = series_labels.clone();
-
     use_future(move || async move {
-        let mut series = series_clone.clone();
-        let mut labels = labels_clone.clone();
-        let mut series_labels = series_labels_clone.clone();
-        save_game_loop(&mut series, &mut labels, &mut series_labels).await;
+        save_game_loop().await;
     });
 
     let power_available = MINING_RIG().get_power_fill();
@@ -3288,29 +3540,12 @@ async fn game_loop(
     }
 }
 
-async fn save_game_loop(
-    series: &Signal<Vec<Vec<f32>>>,
-    labels: &Signal<Vec<String>>,
-    series_labels: &Signal<Vec<String>>,
-) {
+async fn save_game_loop() {
     let do_save = || async {
         info!("saving game state");
 
-        let series_clone = series.clone();
-        let labels_clone = labels.clone();
-        let series_labels_clone = series_labels.clone();
-
         use_future(move || async move {
-            let mut series_clone = series_clone.clone();
-            let mut labels_clone = labels_clone.clone();
-            let mut series_labels_clone = series_labels_clone.clone();
-
-            save_game_state(
-                &mut series_clone,
-                &mut labels_clone,
-                &mut series_labels_clone,
-            )
-            .await;
+            save_game_state().await;
         });
     };
 
@@ -3351,143 +3586,258 @@ async fn recover_game_state(
     labels: &mut Signal<Vec<String>>,
     series_labels: &mut Signal<Vec<String>>,
 ) -> bool {
-    let game_state = get_game_state().await.unwrap_or_else(|_| None);
+    let mut galaxy_save_data: Option<GameState> = None;
 
-    let game_state = match game_state {
+    let galaxy_host = get_galaxy_host().await.unwrap_or_else(|_| None);
+
+    let galaxy_save = match galaxy_host {
+        Some(host) => {
+            let fetching_galaxy_info = host.info_check_status;
+
+            match fetching_galaxy_info {
+                Some(_) => {
+                    let time = web_sys::js_sys::Date::new_0();
+                    let time_now = time.get_time();
+                    let info_check_time = host.info_check_time;
+                    let galaxy = host;
+
+                    if galaxy.galaxy && galaxy.logged_in {
+                        true
+                    } else if !galaxy.galaxy || !galaxy.logged_in {
+                        false
+                    } else {
+                        match info_check_time {
+                            Some(info_check_time) if time_now - info_check_time < 300000.0 => false,
+                            _ => false,
+                        }
+                    }
+                }
+                None => false,
+            }
+        }
+        None => false,
+    };
+
+    if galaxy_save {
+        fetch_save_list().await;
+
+        let galaxy_data = {
+            let galaxy_data = get_galaxy_save_data().await;
+
+            match galaxy_data {
+                Some(galaxy_data) => galaxy_data,
+                None => String::new(),
+            }
+        };
+
+        if !galaxy_data.is_empty() {
+            let decoded_string = decode_game_string(galaxy_data);
+
+            match game_state_from_string(&decoded_string) {
+                Ok(game_state) => {
+                    galaxy_save_data = Some(game_state);
+                }
+                Err(_) => {}
+            }
+        }
+    }
+
+    let game_state = if galaxy_save_data.is_none() {
+        if galaxy_save {
+            let game_state_opt = get_game_state().await.unwrap_or_else(|_| None);
+
+            match game_state_opt {
+                Some(mut game_state) => {
+                    let galaxy_save_details = game_state.galaxy_save_details.clone();
+
+                    if galaxy_save_details.is_none() {
+                        let win = window();
+                        let msg = "You appear to be running from Galaxy.click. Would you like to autosave your game to the cloud?";
+
+                        let confirm = win.confirm_with_message(msg).unwrap_or_else(|_| false);
+
+                        if confirm {
+                            let slot_opt = find_save_slot().await;
+
+                            if slot_opt.is_none() {
+                                let msg = "No save slots available. Please delete a save slot and refresh the page.";
+                                let _ = win.alert_with_message(msg);
+                                get_game_state().await.unwrap_or_else(|_| None)
+                            } else {
+                                let game_slot = slot_opt.unwrap();
+                                let active = true;
+
+                                let galaxy_save_details = GalaxySaveDetails {
+                                    active,
+                                    slot: Some(game_slot),
+                                    save_interval: 30,
+                                    last_save: 0.0,
+                                    force_save: false,
+                                };
+
+                                *GALAXY_SAVE_DETAILS.write() = Some(galaxy_save_details.clone());
+
+                                game_state.galaxy_save_details = Some(galaxy_save_details.clone());
+                                Some(game_state)
+                            }
+                        } else {
+                            let galaxy_save_details = GalaxySaveDetails {
+                                active: false,
+                                slot: None,
+                                save_interval: 30,
+                                last_save: 0.0,
+                                force_save: false,
+                            };
+
+                            *GALAXY_SAVE_DETAILS.write() = Some(galaxy_save_details.clone());
+
+                            Some(game_state)
+                        }
+                    } else {
+                        *GALAXY_SAVE_DETAILS.write() = galaxy_save_details.clone();
+
+                        Some(game_state)
+                    }
+                }
+                None => {
+                    // No local save data
+
+                    let win = window();
+
+                    let msg = "You appear to be running from Galaxy.click. Would you like to autosave your game to the cloud?";
+
+                    let confirm = win.confirm_with_message(msg).unwrap_or_else(|_| false);
+
+                    if confirm {
+                        let slot_opt = find_save_slot().await;
+
+                        if slot_opt.is_none() {
+                            let msg = "No save slots available. Please delete a save slot and refresh the page.";
+                            let _ = win.alert_with_message(msg);
+                            get_game_state().await.unwrap_or_else(|_| None)
+                        } else {
+                            let game_slot = slot_opt.unwrap();
+                            let active = true;
+
+                            let galaxy_save_details = GalaxySaveDetails {
+                                active,
+                                slot: Some(game_slot),
+                                save_interval: 30,
+                                last_save: 0.0,
+                                force_save: false,
+                            };
+
+                            *GALAXY_SAVE_DETAILS.write() = Some(galaxy_save_details.clone());
+                            GALAXY_LOADING_MODAL.write().show = false;
+                            None
+                        }
+                    } else {
+                        let galaxy_save_details = GalaxySaveDetails {
+                            active: false,
+                            slot: None,
+                            save_interval: 30,
+                            last_save: 0.0,
+                            force_save: false,
+                        };
+
+                        *GALAXY_SAVE_DETAILS.write() = Some(galaxy_save_details.clone());
+                        get_game_state().await.unwrap_or_else(|_| None)
+                    }
+                }
+            }
+        } else {
+            get_game_state().await.unwrap_or_else(|_| None)
+        }
+    } else {
+        match galaxy_save_data.clone() {
+            Some(game_state) => match game_state.galaxy_save_details {
+                Some(galaxy_save_details) => {
+                    let do_autosave = galaxy_save_details.active
+                        && galaxy_save_details.slot.is_some()
+                        && galaxy_save;
+                    if do_autosave {
+                        let galaxy_save_time = game_state.real_time;
+
+                        let local_save_res = get_game_state().await.unwrap_or_else(|_| None);
+
+                        let local_save_time = match local_save_res.clone() {
+                            Some(local_save) => local_save.real_time,
+                            None => 0,
+                        };
+
+                        if galaxy_save_time > local_save_time {
+                            // Galaxy save is newer
+                            info!("Galaxy save is newer");
+                            *GALAXY_SAVE_DETAILS.write() = Some(galaxy_save_details);
+                            galaxy_save_data
+                        } else {
+                            info!("Local save is newer");
+                            // Local save is newer
+                            let galaxy_save_details = match local_save_res {
+                                Some(local_save) => local_save.galaxy_save_details,
+                                None => None,
+                            };
+
+                            *GALAXY_SAVE_DETAILS.write() = galaxy_save_details.clone();
+                            get_game_state().await.unwrap_or_else(|_| None)
+                        }
+                    } else {
+                        get_game_state().await.unwrap_or_else(|_| None)
+                    }
+                }
+                None => {
+                    let galaxy_save_details = GalaxySaveDetails {
+                        active: false,
+                        slot: None,
+                        save_interval: 30,
+                        last_save: 0.0,
+                        force_save: false,
+                    };
+
+                    *GALAXY_SAVE_DETAILS.write() = Some(galaxy_save_details.clone());
+
+                    get_game_state().await.unwrap_or_else(|_| None)
+                }
+            },
+
+            None => {
+                let galaxy_save_details = GalaxySaveDetails {
+                    active: false,
+                    slot: None,
+                    save_interval: 30,
+                    last_save: 0.0,
+                    force_save: false,
+                };
+
+                *GALAXY_SAVE_DETAILS.write() = Some(galaxy_save_details.clone());
+
+                None
+            }
+        }
+    };
+
+    let mut game_state = match game_state {
         Some(game_state) => game_state,
         None => return false,
     };
 
+    GALAXY_LOADING_MODAL.write().show = false;
+
     command_line_output("Loading saved game...");
 
-    let mut did_catchup = false;
-
-    let game_state_clone = game_state.clone();
-    let market_catchup = use_signal(|| game_state_clone.market);
-    let mut series_catchup = use_signal(|| game_state_clone.series);
-    let mut series_labels_catchup = use_signal(|| game_state_clone.series_labels);
-    let mut labels_catchup = use_signal(|| game_state_clone.labels);
-    let mut game_time_catchup = game_state_clone.game_time;
-    let rig_lvl = game_state_clone.mining_rig.level;
-
-    let do_offline = false;
-
-    if !game_state.paused.paused && do_offline {
-        let current_time = web_sys::js_sys::Date::new_0();
-        let time_now = current_time.get_time() as i64 / 1000;
-        let time_diff = (time_now - game_state.real_time) / 3;
-
-        //let time_diff = (86400 * 7) / 3;
-
-        let update_progress = |num, completed, start_time| async move {
-            CATCHUP_MODAL.write().current_sim = num;
-            update_progess_bar("catch-up", completed).await;
-
-            let current_time = web_sys::js_sys::Date::new_0().get_time() as i64;
-            let elapsed_time = current_time - start_time;
-
-            let remaining_time =
-                ((elapsed_time as f64 / num as f64) * (time_diff - num) as f64) as i64 / 1000;
-
-            let minutes = remaining_time / 60;
-            let seconds = remaining_time % 60;
-
-            let simulated_time_elapsed = num as f64;
-            let real_time_elapsed = elapsed_time as f64 / 3000.0;
-            let speed_up_factor = simulated_time_elapsed / real_time_elapsed;
-
-            let eta = format!("{}:{:02}", minutes, seconds);
-
-            CATCHUP_MODAL.write().eta = eta;
-            CATCHUP_MODAL.write().speed_up = speed_up_factor as f32;
-
-            TimeoutFuture::new(0).await;
-        };
-
-        if time_diff >= 10 {
-            info!("Making up for {} missed sims.", time_diff);
-            did_catchup = true;
-            CATCHUP_MODAL.write().show = true;
-            CATCHUP_MODAL.write().total_sim = time_diff;
-            TimeoutFuture::new(100).await;
-
-            let start_time = web_sys::js_sys::Date::new_0().get_time() as i64;
-
-            for i in 0..time_diff {
-                if CATCHUP_MODAL().cancel {
-                    did_catchup = false;
-                    break;
-                }
-                let day = game_time_catchup.day;
-                cull_market(
-                    &mut series_labels_catchup,
-                    &mut series_catchup,
-                    rig_lvl,
-                    day,
-                );
-                run_sim_one_day(&mut series_catchup, &mut labels_catchup);
-                game_time_catchup.increment_15();
-
-                if i == 0 {
-                    continue;
-                }
-                let completed = (i as f32 / time_diff as f32) * 100.0;
-
-                match time_diff {
-                    ..=100 => {
-                        update_progress(i, completed, start_time).await;
-                    }
-                    101..=500 => {
-                        if i % 10 == 0 {
-                            update_progress(i, completed, start_time).await;
-                        }
-                    }
-                    501..=1500 => {
-                        if i % 25 == 0 {
-                            update_progress(i, completed, start_time).await;
-                        }
-                    }
-                    1501..=5000 => {
-                        if i % 100 == 0 {
-                            update_progress(i, completed, start_time).await;
-                        }
-                    }
-
-                    5001..=10000 => {
-                        if i % 250 == 0 {
-                            update_progress(i, completed, start_time).await;
-                        }
-                    }
-                    10001.. => {
-                        if i % 500 == 0 {
-                            update_progress(i, completed, start_time).await;
-                        }
-                    }
-                }
-            }
-
-            TimeoutFuture::new(500).await;
-            CATCHUP_MODAL.write().show = false;
-        }
+    if game_state.version.is_none() {
+        game_state.market.reverse_price_history();
     }
 
-    if !did_catchup {
-        *MARKET.write() = game_state.market;
-        *series.write() = game_state.series;
-        *labels.write() = game_state.labels;
-        *series_labels.write() = game_state.series_labels;
-        *GAME_TIME.write() = game_state.game_time;
-        *SELECTION.write() = game_state.selection;
-        *MINING_RIG.write() = game_state.mining_rig;
-    } else {
-        *MARKET.write() = market_catchup();
-        *series.write() = series_catchup();
-        *labels.write() = labels_catchup();
-        *series_labels.write() = series_labels_catchup();
-        *GAME_TIME.write() = game_time_catchup;
-        *SELECTION.write() = game_state.selection;
-        *MINING_RIG.write() = game_state.mining_rig;
-    }
+    let market_chart_data = game_state.market.get_chart();
+
+    *MARKET.write() = game_state.market;
+    *series.write() = market_chart_data.series;
+    *labels.write() = market_chart_data.labels;
+    *series_labels.write() = market_chart_data.series_labels;
+    *GAME_TIME.write() = game_state.game_time;
+    *SELECTION.write() = game_state.selection;
+    *MINING_RIG.write() = game_state.mining_rig;
 
     if let Some(selection) = SELECTION().name.clone() {
         let mkt = MARKET().clone();
@@ -3512,23 +3862,41 @@ async fn recover_game_state(
 }
 
 async fn load_game_from_string(data: String) -> bool {
-    let win = window();
-
-    let game_state_res = win.atob(&data);
-
-    let game_state_str = match game_state_res {
-        Ok(game_state_str) => game_state_str,
-        Err(_) => {
-            command_line_output("Failed to load game state.");
-            return false;
-        }
-    };
+    let game_state_str = decode_game_string(data);
 
     let game_state = game_state_from_string(&game_state_str);
 
     match game_state {
         Ok(game_state) => {
             set_game_state(&game_state).await;
+
+            let galaxy = get_galaxy_host().await.unwrap_or_else(|_| None);
+
+            match galaxy {
+                Some(galaxy) => {
+                    if galaxy.galaxy && galaxy.logged_in {
+                        let do_autosave = match GALAXY_SAVE_DETAILS() {
+                            Some(galaxy_save_details) => {
+                                galaxy_save_details.active && galaxy_save_details.slot.is_some()
+                            }
+                            None => false,
+                        };
+
+                        if do_autosave {
+                            info!("Saving game state to galaxy.");
+
+                            info!("Galaxy save details: {:?}", GALAXY_SAVE_DETAILS());
+
+                            if let Some(galaxy_save_details) = GALAXY_SAVE_DETAILS() {
+                                let save_slot = galaxy_save_details.slot.unwrap();
+                                do_cloud_save(save_slot).await;
+                            };
+                        }
+                    }
+                }
+                None => {}
+            }
+
             true
         }
         Err(_) => {
@@ -3538,25 +3906,23 @@ async fn load_game_from_string(data: String) -> bool {
     }
 }
 
-async fn export_game_state(
-    series: &Signal<Vec<Vec<f32>>>,
-    labels: &Signal<Vec<String>>,
-    series_labels: &Signal<Vec<String>>,
-) -> Option<String> {
-    let real_time = web_sys::js_sys::Date::new_0();
+fn decode_game_string(data: String) -> String {
+    let win = window();
 
-    let game_state = GameState {
-        market: MARKET.read().clone(),
-        game_time: GAME_TIME.read().clone(),
-        labels: labels.read().clone(),
-        series: series.read().clone(),
-        series_labels: series_labels.read().clone(),
-        paused: IS_PAUSED.read().clone(),
-        real_time: real_time.get_time() as i64 / 1000,
-        selection: SELECTION.read().clone(),
-        mining_rig: MINING_RIG.read().clone(),
+    let game_state_res = win.atob(&data);
+
+    let game_state_str = match game_state_res {
+        Ok(game_state_str) => game_state_str,
+        Err(_) => {
+            command_line_output("Failed to load game state.");
+            return "".to_string();
+        }
     };
 
+    game_state_str
+}
+
+async fn export_game_state(game_state: &GameState) -> Option<String> {
     let game_state_str = game_state.to_string();
 
     let window = window();
@@ -3569,24 +3935,73 @@ async fn export_game_state(
     }
 }
 
-async fn save_game_state(
-    series: &Signal<Vec<Vec<f32>>>,
-    labels: &Signal<Vec<String>>,
-    series_labels: &Signal<Vec<String>>,
-) {
+async fn save_game_state() {
     let real_time = web_sys::js_sys::Date::new_0();
+    let real_time_secs = real_time.get_time() as i64 / 1000;
 
     let game_state = GameState {
         market: MARKET.read().clone(),
         game_time: GAME_TIME.read().clone(),
-        labels: labels.read().clone(),
-        series: series.read().clone(),
-        series_labels: series_labels.read().clone(),
         paused: IS_PAUSED.read().clone(),
-        real_time: real_time.get_time() as i64 / 1000,
+        real_time: real_time_secs,
         selection: SELECTION.read().clone(),
         mining_rig: MINING_RIG.read().clone(),
+        galaxy_save_details: GALAXY_SAVE_DETAILS.read().clone(),
+        version: Some(1),
     };
 
     set_game_state(&game_state).await;
+
+    let galaxy = get_galaxy_host().await.unwrap_or_else(|_| None);
+
+    match galaxy {
+        Some(galaxy) => {
+            if galaxy.galaxy && galaxy.logged_in {
+                let do_autosave = match GALAXY_SAVE_DETAILS() {
+                    Some(galaxy_save_details) => {
+                        galaxy_save_details.active && galaxy_save_details.slot.is_some()
+                    }
+                    None => false,
+                };
+
+                if do_autosave {
+                    let last_save_and_interval = match GALAXY_SAVE_DETAILS() {
+                        Some(galaxy_save_details) => {
+                            let last_save = (galaxy_save_details.last_save / 1000.0) as i64;
+                            let save_interval = galaxy_save_details.save_interval as i64;
+
+                            (last_save, save_interval)
+                        }
+                        None => (0, 0),
+                    };
+
+                    let force_save = match GALAXY_SAVE_DETAILS() {
+                        Some(galaxy_save_details) => galaxy_save_details.force_save,
+                        None => false,
+                    };
+
+                    if real_time_secs > last_save_and_interval.0 + last_save_and_interval.1
+                        || force_save
+                    {
+                        if let Some(galaxy_save_details) = GALAXY_SAVE_DETAILS() {
+                            info!("Saving game state to galaxy.");
+
+                            let save_slot = galaxy_save_details.slot.unwrap();
+                            do_cloud_save(save_slot).await;
+
+                            let mut galaxy_save_details = galaxy_save_details.clone();
+
+                            if force_save {
+                                galaxy_save_details.force_save = false;
+                            }
+
+                            galaxy_save_details.last_save = real_time.get_time();
+                            *GALAXY_SAVE_DETAILS.write() = Some(galaxy_save_details);
+                        };
+                    }
+                }
+            }
+        }
+        None => {}
+    }
 }
