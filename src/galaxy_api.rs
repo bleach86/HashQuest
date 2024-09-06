@@ -14,7 +14,7 @@ use crate::i_db::{
 };
 use crate::{export_game_state, DO_SAVE, GALAXY_SAVE_DETAILS};
 
-static MAX_MSG_SIZE: u32 = 256_000;
+static MAX_MSG_SIZE: u64 = 256_000;
 static GALAXY_LABEL_BASE: &str = "HashQuest AutoSave";
 
 #[derive(Serialize, Deserialize, Debug, Clone)]
@@ -31,7 +31,7 @@ pub enum GalaxyResponse {
 #[serde(rename_all = "snake_case")]
 pub struct InfoRes {
     pub galaxy: bool,
-    pub api_version: u32,
+    pub api_version: u64,
     pub theme_preference: String,
     pub logged_in: bool,
     pub echo: Option<String>,
@@ -58,7 +58,7 @@ pub struct SaveData {
 pub struct SaveContentRes {
     pub error: bool,
     pub message: Option<String>,
-    pub slot: u32,
+    pub slot: u64,
     pub label: Option<String>,
     pub content: Option<String>,
     pub echo: Option<String>,
@@ -69,7 +69,7 @@ pub struct SaveContentRes {
 pub struct SavedRes {
     pub error: bool,
     pub message: Option<String>,
-    pub slot: u32,
+    pub slot: u64,
     pub echo: Option<String>,
 }
 
@@ -78,7 +78,7 @@ pub struct SavedRes {
 pub struct DeletedRes {
     pub error: bool,
     pub message: Option<String>,
-    pub slot: u32,
+    pub slot: u64,
     pub echo: Option<String>,
 }
 
@@ -98,7 +98,7 @@ pub struct SaveListReq {
 #[derive(Serialize, Deserialize, Debug, Clone)]
 pub struct SaveReq {
     pub action: String,
-    pub slot: u32,
+    pub slot: u64,
     pub label: Option<String>,
     pub data: Option<String>,
     pub echo: Option<String>,
@@ -107,14 +107,14 @@ pub struct SaveReq {
 #[derive(Serialize, Deserialize, Debug, Clone)]
 pub struct LoadReq {
     pub action: String,
-    pub slot: u32,
+    pub slot: u64,
     pub echo: Option<String>,
 }
 
 #[derive(Serialize, Deserialize, Debug, Clone)]
 pub struct DeleteReq {
     pub action: String,
-    pub slot: u32,
+    pub slot: u64,
     pub echo: Option<String>,
 }
 
@@ -203,7 +203,7 @@ pub async fn save_list_response(save_list: SaveListRes) {
     let mut galaxy_save_list = GalaxySaveList::new();
 
     for (key, value) in save_list.list {
-        let slot = match key.parse::<u32>() {
+        let slot = match key.parse::<u64>() {
             Ok(slot) => slot,
             Err(err) => {
                 info!("Failed to parse slot: {:?}", err);
@@ -239,7 +239,7 @@ pub async fn save_list_response(save_list: SaveListRes) {
     }
 }
 
-pub async fn do_cloud_save(save_slot: u32) {
+pub async fn do_cloud_save(save_slot: u64) {
     let game_state_res = get_game_state().await;
 
     let game_state_opt = match game_state_res {
@@ -254,13 +254,11 @@ pub async fn do_cloud_save(save_slot: u32) {
         }
     };
 
-    // let game_state = export_game_state(&game_state).await;
-
     let save_data = export_game_state(&game_state)
         .await
         .unwrap_or_else(|| "".to_string());
 
-    if save_data.len() as u32 > MAX_MSG_SIZE {
+    if save_data.len() as u64 > MAX_MSG_SIZE {
         info!("Save data too large");
         if let Some(mut save_details) = GALAXY_SAVE_DETAILS() {
             save_details.active = false;
@@ -309,7 +307,7 @@ pub async fn do_cloud_save(save_slot: u32) {
     }
 }
 
-pub fn fetch_cloud_save(slot: u32) {
+pub fn fetch_cloud_save(slot: u64) {
     let data: LoadReq = LoadReq {
         action: "load".to_string(),
         slot,
@@ -326,7 +324,7 @@ pub fn fetch_cloud_save(slot: u32) {
     }
 }
 
-pub async fn delete_cloud_save(slot: u32) {
+pub async fn delete_cloud_save(slot: u64) {
     let data: DeleteReq = DeleteReq {
         action: "delete".to_string(),
         slot,
@@ -519,7 +517,7 @@ where
     }
 }
 
-pub async fn find_save_slot() -> Option<u32> {
+pub async fn find_save_slot() -> Option<u64> {
     let galaxy_save_list = get_galaxy_save_list().await.unwrap_or_else(|err| {
         info!("Failed to get galaxy save list: {:?}", err);
         None
@@ -533,7 +531,7 @@ pub async fn find_save_slot() -> Option<u32> {
         }
     };
 
-    let mut slots: Vec<u32> = (0..=10).collect();
+    let mut slots: Vec<u64> = (0..=10).collect();
 
     for save_slot in galaxy_save_list.iter() {
         if save_slot.label == Some(GALAXY_LABEL_BASE.to_string()) {

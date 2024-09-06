@@ -7,8 +7,10 @@ use web_sys::DomException;
 use crate::galaxy_api::GalaxyResponse;
 use crate::market::Market;
 use crate::mining_rig::MiningRig;
-use crate::utils::{GalaxySaveDetails, GameTime, Paused};
+use crate::nft::NftStudio;
+use crate::utils::{GalaxySaveDetails, GameTime, PaintUndo, Paused};
 use js_sys::JSON;
+use wasm_bindgen::JsCast;
 
 #[derive(Serialize, Deserialize, Clone, Default, Debug)]
 pub struct GameState {
@@ -16,16 +18,18 @@ pub struct GameState {
     pub game_time: GameTime,
     pub paused: Paused,
     pub real_time: i64,
-    pub selection: Selection,
+    pub selection: Option<Selection>,
     pub mining_rig: MiningRig,
     pub galaxy_save_details: Option<GalaxySaveDetails>,
-    pub version: Option<u32>,
+    pub version: Option<u64>,
+    pub nft_studio: Option<NftStudio>,
+    pub selection_multi: Option<SelectionMultiList>,
 }
 
 #[derive(Serialize, Deserialize, Clone, Default, Debug)]
 pub struct GalaxyHost {
     pub galaxy: bool,
-    pub api_version: u32,
+    pub api_version: u64,
     pub logged_in: bool,
     pub info_check_status: Option<bool>,
     pub info_check_time: Option<f64>,
@@ -33,7 +37,7 @@ pub struct GalaxyHost {
 
 #[derive(Serialize, Deserialize, Clone, Default, Debug)]
 pub struct GalaxySaveSlot {
-    pub slot: u32,
+    pub slot: u64,
     pub label: Option<String>,
     pub content: Option<String>,
 }
@@ -77,6 +81,31 @@ impl GameState {
     }
 }
 
+#[derive(Serialize, Deserialize, Clone, Default, Debug)]
+pub struct CmdOutput {
+    pub last: f64,
+}
+
+impl CmdOutput {
+    pub fn new() -> Self {
+        CmdOutput { last: 0.0 }
+    }
+
+    pub fn set_last(&mut self) {
+        let time_now = web_sys::js_sys::Date::new_0();
+        let last = time_now.get_time();
+
+        self.last = last;
+    }
+
+    pub fn can_next(&self) -> bool {
+        let time_now = web_sys::js_sys::Date::new_0();
+        let now = time_now.get_time();
+
+        now - self.last > 1000.0
+    }
+}
+
 pub fn game_state_from_string(json: &str) -> Result<GameState, JsValue> {
     let js_value = JSON::parse(json)?;
 
@@ -88,6 +117,162 @@ pub fn game_state_from_string(json: &str) -> Result<GameState, JsValue> {
 pub struct Selection {
     pub index: Option<usize>,
     pub name: Option<String>,
+}
+
+#[derive(Serialize, Deserialize, Clone, Default, Debug)]
+pub struct SelectionMulti {
+    pub name: String,
+    pub index: usize,
+    pub selection_index: usize,
+}
+
+#[derive(Serialize, Deserialize, Clone, Default, Debug)]
+pub struct SelectionMultiList {
+    pub selections: Vec<SelectionMulti>,
+    pub max_selectable: u8,
+}
+
+impl SelectionMultiList {
+    pub fn new() -> Self {
+        SelectionMultiList {
+            selections: Vec::new(),
+            max_selectable: 1,
+        }
+    }
+
+    fn insert(&mut self, selection: SelectionMulti) {
+        self.selections.insert(selection.selection_index, selection);
+    }
+
+    fn remove(&mut self, index: usize) {
+        self.selections.remove(index);
+    }
+
+    pub fn clear(&mut self) {
+        self.selections.clear();
+    }
+
+    fn is_full(&self) -> bool {
+        self.selections.len() as u8 >= self.max_selectable
+    }
+
+    pub fn is_selected(&self, index: usize) -> bool {
+        self.selections.iter().any(|s| s.index == index)
+    }
+
+    pub fn make_selection(&mut self, index: usize, name: &str, do_toggle: bool) {
+        if self.is_selected(index) && do_toggle {
+            self.unmake_selection(index);
+        } else {
+            if self.is_full() {
+                self.remove(0);
+            }
+
+            let mut selection_index = 0;
+
+            for i in 0..self.max_selectable as usize {
+                if !self.selections.iter().any(|s| s.selection_index == i) {
+                    selection_index = i;
+                    break;
+                }
+            }
+
+            let selection = SelectionMulti {
+                index,
+                name: name.to_string(),
+                selection_index,
+            };
+            self.insert(selection);
+        }
+
+        self.update_ui();
+    }
+
+    pub fn unmake_selection(&mut self, index: usize) {
+        if let Some(position) = self.selections.iter().position(|s| s.index == index) {
+            self.remove(position);
+        }
+    }
+
+    pub fn update_ui(&self) {
+        let window = web_sys::window().expect("should have a window");
+        let document = window.document().expect("should have a document");
+
+        let radios = document
+            .query_selector_all("input[name='coin-selection']")
+            .expect("should have radios");
+
+        for i in 0..radios.length() {
+            let radio = radios.get(i).expect("should have radio");
+            let radio = radio
+                .dyn_into::<web_sys::HtmlInputElement>()
+                .expect("should be a radio");
+            radio.set_checked(false); // Reset all radios
+        }
+
+        let rows = document.query_selector_all("tr").expect("should have rows");
+        for i in 0..rows.length() {
+            let row = rows.get(i).expect("should have row");
+            let row = row.dyn_into::<web_sys::Element>().expect("should be a row");
+            row.set_class_name(""); // Clear all row classes
+        }
+
+        for selection in &self.selections {
+            let coin_name = &selection.name;
+
+            for i in 0..radios.length() {
+                let radio = radios.get(i).expect("should have radio");
+                let radio = radio
+                    .dyn_into::<web_sys::HtmlInputElement>()
+                    .expect("should be a radio");
+
+                if radio.id() == *coin_name {
+                    radio.set_checked(true);
+                }
+            }
+
+            for i in 0..rows.length() {
+                let row = rows.get(i).expect("should have row");
+                let row = row.dyn_into::<web_sys::Element>().expect("should be a row");
+
+                if row.id() == format!("{}-row", coin_name) {
+                    row.set_class_name(&format!("selected-{}", selection.index));
+                }
+            }
+        }
+    }
+
+    pub fn increment_max_selectable(&mut self) {
+        if self.max_selectable < 10 {
+            self.max_selectable += 1;
+        }
+    }
+
+    pub fn get_first_selection(&self) -> Option<&SelectionMulti> {
+        self.selections.first()
+    }
+
+    pub fn get_selected(&self) -> Vec<SelectionMulti> {
+        self.selections.clone()
+    }
+
+    pub fn selection_by_index(&self, index: usize) -> Option<&SelectionMulti> {
+        self.selections.iter().find(|s| s.selection_index == index)
+    }
+
+    pub fn get_upgrade_cost(&self) -> f64 {
+        match self.max_selectable {
+            1 => 10_000.0,
+            2 => 100_000.0,
+            3 => 1_000_000.0,
+            4 => 10_000_000.0,
+            5 => 100_000_000.0,
+            6 => 1_000_000_000.0,
+            7 => 10_000_000_000.0,
+            8 => 100_000_000_000.0,
+            _ => 1_000_000_000_000.0,
+        }
+    }
 }
 
 const DB_NAME: &str = "HashQuestDB";
@@ -295,6 +480,74 @@ pub async fn get_galaxy_response_queue() -> Result<Option<GalaxyResponseQueue>, 
 pub async fn clear_galaxy_response_queue() -> JsValue {
     let future = async move {
         set_item("galaxy_response_queue", &JsValue::NULL)
+            .await
+            .map_err(|err| JsValue::from(err))?;
+        Ok(JsValue::from(true))
+    }
+    .await;
+
+    future.unwrap_or_else(|err| err)
+}
+
+pub async fn set_paint_undo(paint_undo: &PaintUndo) -> JsValue {
+    let value: JsValue = serde_wasm_bindgen::to_value(paint_undo).unwrap();
+    wasm_set_item("paint_undo", &value).await
+}
+
+pub async fn get_paint_undo() -> Result<Option<PaintUndo>, JsValue> {
+    let value = get_item("paint_undo").await.map_err(JsValue::from)?;
+
+    let value = match value {
+        Some(value) => {
+            if value.is_null() {
+                None
+            } else {
+                Some(serde_wasm_bindgen::from_value::<PaintUndo>(value).unwrap())
+            }
+        }
+        None => return Ok(None),
+    };
+
+    Ok(value)
+}
+
+pub async fn clear_paint_undo() -> JsValue {
+    let future = async move {
+        set_item("paint_undo", &JsValue::NULL)
+            .await
+            .map_err(|err| JsValue::from(err))?;
+        Ok(JsValue::from(true))
+    }
+    .await;
+
+    future.unwrap_or_else(|err| err)
+}
+
+pub async fn set_cmd_output(cmd_output: &CmdOutput) -> JsValue {
+    let value: JsValue = serde_wasm_bindgen::to_value(cmd_output).unwrap();
+    wasm_set_item("cmd_output", &value).await
+}
+
+pub async fn get_cmd_output() -> Result<Option<CmdOutput>, JsValue> {
+    let value = get_item("cmd_output").await.map_err(JsValue::from)?;
+
+    let value = match value {
+        Some(value) => {
+            if value.is_null() {
+                None
+            } else {
+                Some(serde_wasm_bindgen::from_value::<CmdOutput>(value).unwrap())
+            }
+        }
+        None => return Ok(None),
+    };
+
+    Ok(value)
+}
+
+pub async fn clear_cmd_output() -> JsValue {
+    let future = async move {
+        set_item("cmd_output", &JsValue::NULL)
             .await
             .map_err(|err| JsValue::from(err))?;
         Ok(JsValue::from(true))

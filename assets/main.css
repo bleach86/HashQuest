@@ -187,6 +187,14 @@ h4 {
   transition: width 0.2s ease;
 }
 
+.progress-text {
+  position: absolute;
+  width: 100%;
+  text-align: center;
+  mix-blend-mode: difference;
+  color: white;
+}
+
 .status-bar-spacer {
   width: 50%;
 }
@@ -322,4 +330,49 @@ input[type="radio"] {
   .pauseModal {
     width: 95%;
   }
+}
+
+.dropdown {
+  position: relative;
+  display: inline-block;
+}
+
+.dropdown-menu {
+  /* display: none; */
+  position: absolute;
+  min-width: 160px;
+
+  z-index: 1;
+}
+
+.dropdown-item {
+  color: black;
+  padding: 6px 12px;
+  text-decoration: none;
+  display: block;
+}
+
+.dropdown-item:hover {
+  background-color: #0000ff;
+  color: white;
+  cursor: pointer;
+}
+
+.dropdown-item.disabled {
+  color: grey;
+  text-decoration: line-through;
+}
+
+.menu-dropdown:hover {
+  cursor: pointer;
+}
+
+.noselect {
+  -webkit-touch-callout: none; /* iOS Safari */
+  -webkit-user-select: none; /* Safari */
+  -khtml-user-select: none; /* Konqueror HTML */
+  -moz-user-select: none; /* Firefox */
+  -ms-user-select: none; /* Internet Explorer/Edge */
+  user-select: none; /* Non-prefixed version, currently
+                                  supported by Chrome and Opera */
 }
