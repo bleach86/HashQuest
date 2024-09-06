@@ -8,7 +8,7 @@ pub static MINING_RIG: GlobalSignal<MiningRig> = Signal::global(|| MiningRig::ne
 
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize, Default)]
 pub struct AutoPowerFill {
-    pub level: u32,
+    pub level: u64,
     pub active: bool,
     pub refill_time: Option<i64>,
 }
@@ -41,7 +41,7 @@ impl AutoPowerFill {
 
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize, Default)]
 pub struct RugProtection {
-    pub level: u32,
+    pub level: u64,
     pub active: bool,
 }
 
@@ -95,21 +95,22 @@ impl Bank {
 
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize, Default)]
 pub struct MiningRig {
-    pub level: u32,
-    pub power_capacity: f32,
-    pub available_power: f32,
+    pub level: u64,
+    pub power_capacity: f64,
+    pub available_power: f64,
     pub cpu_slot: CpuSlot,
     pub gpu_slot: GpuSlot,
     pub asic_slot: AsicSlot,
-    pub click_power: u32,
-    pub max_gpu_slots: u32,
-    pub max_asic_slots: u32,
-    pub max_click_power: u32,
-    pub cpu_upgrade_level: u32,
-    pub gpu_upgrade_level: u32,
-    pub asic_upgrade_level: u32,
+    pub click_power: u64,
+    pub max_gpu_slots: u64,
+    pub max_asic_slots: u64,
+    pub max_click_power: u64,
+    pub cpu_upgrade_level: u64,
+    pub gpu_upgrade_level: u64,
+    pub asic_upgrade_level: u64,
     pub auto_power_fill: Option<AutoPowerFill>,
     pub rug_protection: RugProtection,
+    pub auto_mining_level: Option<u64>,
 }
 
 impl MiningRig {
@@ -130,10 +131,11 @@ impl MiningRig {
             asic_upgrade_level: 1,
             auto_power_fill: None,
             rug_protection: RugProtection::new(),
+            auto_mining_level: None,
         }
     }
 
-    pub fn get_rug_protection_level(&self) -> u32 {
+    pub fn get_rug_protection_level(&self) -> u64 {
         if !self.rug_protection.active {
             return 0;
         }
@@ -144,31 +146,31 @@ impl MiningRig {
         self.rug_protection.active
     }
 
-    pub fn get_rug_protection_amount(&self) -> f32 {
+    pub fn get_rug_protection_amount(&self) -> f64 {
         if self.level < 10 || !self.rug_protection.active {
             return 0.0;
         }
 
         match self.rug_protection.level {
             0 => 0.0,
-            1..=3 => 0.1 + ((self.rug_protection.level - 1) as f32 * 0.02),
-            4..=6 => 0.15 + ((self.rug_protection.level - 4) as f32 * 0.02),
-            7..=9 => 0.20 + ((self.rug_protection.level - 7) as f32 * 0.02),
-            10..=12 => 0.25 + ((self.rug_protection.level - 10) as f32 * 0.02),
-            13..=15 => 0.30 + ((self.rug_protection.level - 13) as f32 * 0.02),
-            16..=18 => 0.35 + ((self.rug_protection.level - 16) as f32 * 0.02),
-            19..=21 => 0.40 + ((self.rug_protection.level - 19) as f32 * 0.02),
-            22..=24 => 0.45 + ((self.rug_protection.level - 22) as f32 * 0.02),
-            25..=27 => 0.50 + ((self.rug_protection.level - 25) as f32 * 0.02),
-            28..=30 => 0.55 + ((self.rug_protection.level - 28) as f32 * 0.02),
-            31..=33 => 0.60 + ((self.rug_protection.level - 31) as f32 * 0.02),
-            34..=36 => 0.65 + ((self.rug_protection.level - 34) as f32 * 0.02),
-            37..=40 => 0.70 + ((self.rug_protection.level - 37) as f32 * 0.02),
-            41..=45 => 0.75 + ((self.rug_protection.level - 41) as f32 * 0.01),
-            46..=50 => 0.80 + ((self.rug_protection.level - 46) as f32 * 0.01),
-            51..=55 => 0.85 + ((self.rug_protection.level - 51) as f32 * 0.01),
-            56..=60 => 0.90 + ((self.rug_protection.level - 56) as f32 * 0.01),
-            61..=64 => 0.95 + ((self.rug_protection.level - 61) as f32 * 0.01),
+            1..=3 => 0.1 + ((self.rug_protection.level - 1) as f64 * 0.02),
+            4..=6 => 0.15 + ((self.rug_protection.level - 4) as f64 * 0.02),
+            7..=9 => 0.20 + ((self.rug_protection.level - 7) as f64 * 0.02),
+            10..=12 => 0.25 + ((self.rug_protection.level - 10) as f64 * 0.02),
+            13..=15 => 0.30 + ((self.rug_protection.level - 13) as f64 * 0.02),
+            16..=18 => 0.35 + ((self.rug_protection.level - 16) as f64 * 0.02),
+            19..=21 => 0.40 + ((self.rug_protection.level - 19) as f64 * 0.02),
+            22..=24 => 0.45 + ((self.rug_protection.level - 22) as f64 * 0.02),
+            25..=27 => 0.50 + ((self.rug_protection.level - 25) as f64 * 0.02),
+            28..=30 => 0.55 + ((self.rug_protection.level - 28) as f64 * 0.02),
+            31..=33 => 0.60 + ((self.rug_protection.level - 31) as f64 * 0.02),
+            34..=36 => 0.65 + ((self.rug_protection.level - 34) as f64 * 0.02),
+            37..=40 => 0.70 + ((self.rug_protection.level - 37) as f64 * 0.02),
+            41..=45 => 0.75 + ((self.rug_protection.level - 41) as f64 * 0.01),
+            46..=50 => 0.80 + ((self.rug_protection.level - 46) as f64 * 0.01),
+            51..=55 => 0.85 + ((self.rug_protection.level - 51) as f64 * 0.01),
+            56..=60 => 0.90 + ((self.rug_protection.level - 56) as f64 * 0.01),
+            61..=64 => 0.95 + ((self.rug_protection.level - 61) as f64 * 0.01),
             _ => 1.0,
         }
     }
@@ -216,12 +218,12 @@ impl MiningRig {
         self.rug_protection.upgrade();
     }
 
-    pub fn get_level(&self) -> u32 {
+    pub fn get_level(&self) -> u64 {
         self.level
     }
 
     pub fn consume_power(&mut self) -> bool {
-        let power_usage_watts = (self.get_power_usage() as f32) / 40.0;
+        let power_usage_watts = (self.get_power_usage() as f64) / 40.0;
 
         if self.available_power >= power_usage_watts {
             self.available_power -= power_usage_watts;
@@ -232,7 +234,7 @@ impl MiningRig {
         }
     }
 
-    pub fn get_new_coin_cooldown(&self) -> u32 {
+    pub fn get_new_coin_cooldown(&self) -> u64 {
         self.click_power
     }
 
@@ -282,7 +284,7 @@ impl MiningRig {
         }
     }
 
-    pub fn get_auto_power_fill_level(&self) -> u32 {
+    pub fn get_auto_power_fill_level(&self) -> u64 {
         if let Some(auto_power_fill) = &self.auto_power_fill {
             auto_power_fill.level
         } else {
@@ -290,24 +292,24 @@ impl MiningRig {
         }
     }
 
-    fn power_capacity(&self) -> f32 {
-        self.get_power_usage() as f32 * 40.0
+    fn power_capacity(&self) -> f64 {
+        self.get_power_usage() as f64 * 40.0
     }
 
-    pub fn get_auto_power_fill_cost(&self, day: u32) -> f64 {
-        let refill_cost = self.power_capacity() as f64 / get_season(day);
-        refill_cost * ((1.0 + self.get_auto_fill_fee()) * self.get_auto_power_fill_amount()) as f64
+    pub fn get_auto_power_fill_cost(&self, day: u64) -> f64 {
+        let refill_cost = self.power_capacity() / get_season(day);
+        refill_cost * (1.0 + self.get_auto_fill_fee()) * self.get_auto_power_fill_amount()
     }
 
-    pub fn get_available_power(&self) -> f32 {
+    pub fn get_available_power(&self) -> f64 {
         self.available_power
     }
 
-    pub fn get_power_capacity(&self) -> f32 {
+    pub fn get_power_capacity(&self) -> f64 {
         self.power_capacity()
     }
 
-    pub fn get_auto_power_fill_delay(&self) -> u32 {
+    pub fn get_auto_power_fill_delay(&self) -> u64 {
         let auto_fill_level = self.get_auto_power_fill_level();
         match auto_fill_level {
             1 => 5_000 / 50,
@@ -354,35 +356,35 @@ impl MiningRig {
         cost as f64
     }
 
-    pub fn get_auto_power_fill_amount(&self) -> f32 {
+    pub fn get_auto_power_fill_amount(&self) -> f64 {
         let auto_fill_level = self.get_auto_power_fill_level();
         match auto_fill_level {
-            1..=3 => 0.25 + ((auto_fill_level - 1) as f32 * 0.02),
-            4..=6 => 0.33 + ((auto_fill_level - 4) as f32 * 0.03),
-            7..=9 => 0.50 + ((auto_fill_level - 7) as f32 * 0.05),
-            10..=12 => 0.75 + ((auto_fill_level - 10) as f32 * 0.08),
+            1..=3 => 0.25 + ((auto_fill_level - 1) as f64 * 0.02),
+            4..=6 => 0.33 + ((auto_fill_level - 4) as f64 * 0.03),
+            7..=9 => 0.50 + ((auto_fill_level - 7) as f64 * 0.05),
+            10..=12 => 0.75 + ((auto_fill_level - 10) as f64 * 0.08),
             _ => 1.0,
         }
         .min(1.0)
     }
 
-    pub fn get_auto_fill_fee(&self) -> f32 {
+    pub fn get_auto_fill_fee(&self) -> f64 {
         let auto_fill_level = self.get_auto_power_fill_level();
         match auto_fill_level {
-            1..=3 => 0.25 - (auto_fill_level - 1) as f32 * 0.05,
-            4..=6 => 0.10 - (auto_fill_level - 4) as f32 * 0.05,
-            7..=9 => 0.05 - (auto_fill_level - 7) as f32 * 0.05,
-            10..=12 => 0.0 - (auto_fill_level - 10) as f32 * 0.05,
+            1..=3 => 0.25 - (auto_fill_level - 1) as f64 * 0.05,
+            4..=6 => 0.10 - (auto_fill_level - 4) as f64 * 0.05,
+            7..=9 => 0.05 - (auto_fill_level - 7) as f64 * 0.05,
+            10..=12 => 0.0 - (auto_fill_level - 10) as f64 * 0.05,
             _ => 0.0,
         }
     }
 
-    pub fn get_power_fill(&self) -> f32 {
+    pub fn get_power_fill(&self) -> f64 {
         self.available_power / self.power_capacity()
     }
 
-    pub fn get_power_fill_cost(&self, day: u32) -> f64 {
-        (self.power_capacity() - self.available_power) as f64 / get_season(day)
+    pub fn get_power_fill_cost(&self, day: u64) -> f64 {
+        (self.power_capacity() - self.available_power) / get_season(day)
     }
 
     pub fn fill_power(&mut self) {
@@ -404,7 +406,7 @@ impl MiningRig {
         self.max_click_power = max_click_power;
     }
 
-    pub fn get_max_asic_slots(&self) -> u32 {
+    pub fn get_max_asic_slots(&self) -> u64 {
         let ranges = [
             (35, 49, 0, 2),
             (51, 65, 19, 3),
@@ -415,7 +417,7 @@ impl MiningRig {
             (127, 139, 295, 12),
             (141, 155, 393, 14),
             (157, 169, 521, 16),
-            (171, u32::MAX, 651, 18),
+            (171, u64::MAX, 651, 18),
         ];
 
         if self.level < 35 {
@@ -432,7 +434,7 @@ impl MiningRig {
         self.max_asic_slots
     }
 
-    pub fn get_max_gpu_slots(&self) -> u32 {
+    pub fn get_max_gpu_slots(&self) -> u64 {
         let ranges = [
             (5, 21, 0, 1),
             (22, 34, 9, 2),
@@ -445,7 +447,7 @@ impl MiningRig {
             (126, 140, 443, 16),
             (142, 154, 573, 18),
             (156, 170, 701, 20),
-            (172, u32::MAX, 863, 22),
+            (172, u64::MAX, 863, 22),
         ];
 
         if self.level < 5 {
@@ -466,18 +468,6 @@ impl MiningRig {
         self.max_gpu_slots
     }
 
-    pub fn add_gpu_slot(&mut self) {
-        if self.gpu_slot.amount < self.max_gpu_slots {
-            self.gpu_slot.add_gpu();
-        }
-    }
-
-    pub fn add_asic_slot(&mut self) {
-        if self.asic_slot.amount < self.max_asic_slots {
-            self.asic_slot.add_asic();
-        }
-    }
-
     pub fn upgrade_cpu(&mut self) {
         if self.cpu_upgrade_level < 5 {
             self.cpu_slot.upgrade();
@@ -485,48 +475,46 @@ impl MiningRig {
         }
     }
 
-    pub fn get_cpu_level(&self) -> u32 {
+    pub fn get_cpu_level(&self) -> u64 {
         self.cpu_slot.get_level()
     }
 
-    pub fn get_gpu_level(&self) -> u32 {
+    pub fn get_gpu_level(&self) -> u64 {
         self.gpu_slot.get_level()
     }
 
-    pub fn get_asic_level(&self) -> u32 {
+    pub fn get_asic_level(&self) -> u64 {
         self.asic_slot.get_level()
     }
 
     pub fn add_click_power(&mut self) {
-        self.available_power += (self.power_capacity() * 0.05) as f32;
+        self.available_power += self.power_capacity() * 0.05;
         self.available_power = self.available_power.min(self.power_capacity());
     }
 
-    pub fn add_power(&mut self, power: f32) {
+    pub fn add_power(&mut self, power: f64) {
         self.available_power += power;
     }
 
-    pub fn fill_to_percent(&mut self, percent: f32) {
+    pub fn fill_to_percent(&mut self, percent: f64) {
         self.available_power = self.power_capacity() * percent;
     }
 
     pub fn upgrade_gpu(&mut self) {
         self.gpu_slot.upgrade();
-        self.add_gpu_slot();
         self.gpu_upgrade_level = self.get_top_gpu_level();
     }
 
-    fn get_top_gpu_level(&self) -> u32 {
+    fn get_top_gpu_level(&self) -> u64 {
         self.gpu_slot.level
     }
 
     pub fn upgrade_asic(&mut self) {
         self.asic_slot.upgrade();
-        self.add_asic_slot();
         self.asic_upgrade_level = self.get_top_asic_level();
     }
 
-    fn get_top_asic_level(&self) -> u32 {
+    fn get_top_asic_level(&self) -> u64 {
         self.asic_slot.level
     }
 
@@ -544,7 +532,7 @@ impl MiningRig {
             26..=30 => 5_600.0 + (self.level - 26) as f64 * 1_000.0,
             31..=35 => 10_600.0 + (self.level - 31) as f64 * 1_500.0,
             36..=40 => 16_600.0 + (self.level - 36) as f64 * 2_000.0,
-            _ => (26_600.0 + (self.level - 41) as f64 * 2_500.0).min(50_000.0),
+            _ => (26_600.0 + (self.level - 41) as f64 * 2_500.0).min(5_000_000.0),
         }
     }
 
@@ -576,15 +564,15 @@ impl MiningRig {
         }
     }
 
-    pub fn get_new_gpu_cost(&self) -> u32 {
+    pub fn get_new_gpu_cost(&self) -> u64 {
         500 * self.gpu_upgrade_level
     }
 
-    pub fn get_new_asic_cost(&self) -> u32 {
+    pub fn get_new_asic_cost(&self) -> u64 {
         5000 * self.asic_upgrade_level
     }
 
-    pub fn get_power_usage(&self) -> u32 {
+    pub fn get_power_usage(&self) -> u64 {
         let cpu_power = self.cpu_slot.get_power_usage();
         let gpu_power = self.gpu_slot.get_power_usage();
         let asic_power = self.asic_slot.get_power_usage();
@@ -592,39 +580,39 @@ impl MiningRig {
         cpu_power + gpu_power + asic_power
     }
 
-    pub fn get_cpu_hash_rate(&self) -> u32 {
+    pub fn get_cpu_hash_rate(&self) -> u64 {
         self.cpu_slot.get_hash_rate()
     }
 
-    pub fn get_cpu_power_usage(&self) -> u32 {
+    pub fn get_cpu_power_usage(&self) -> u64 {
         self.cpu_slot.get_power_usage()
     }
 
-    pub fn get_gpu_hash_rate(&self) -> u32 {
+    pub fn get_gpu_hash_rate(&self) -> u64 {
         self.gpu_slot.get_hash_rate()
     }
 
-    pub fn get_gpu_power_usage(&self) -> u32 {
+    pub fn get_gpu_power_usage(&self) -> u64 {
         self.gpu_slot.get_power_usage()
     }
 
-    pub fn get_asic_hash_rate(&self) -> u32 {
+    pub fn get_asic_hash_rate(&self) -> u64 {
         self.asic_slot.get_hash_rate()
     }
 
-    pub fn get_asic_power_usage(&self) -> u32 {
+    pub fn get_asic_power_usage(&self) -> u64 {
         self.asic_slot.get_power_usage()
     }
 
-    pub fn get_filled_gpu_slots(&self) -> u32 {
+    pub fn get_filled_gpu_slots(&self) -> u64 {
         self.gpu_slot.amount
     }
 
-    pub fn get_filled_asic_slots(&self) -> u32 {
+    pub fn get_filled_asic_slots(&self) -> u64 {
         self.asic_slot.amount
     }
 
-    pub fn get_hash_rate(&self) -> u32 {
+    pub fn get_hash_rate(&self) -> u64 {
         let cpu_hash = self.cpu_slot.get_hash_rate();
         let gpu_hash = self.gpu_slot.get_hash_rate();
         let asic_hash = self.asic_slot.get_hash_rate();
@@ -635,94 +623,92 @@ impl MiningRig {
 
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize, Default)]
 pub struct AsicSlot {
-    pub level: u32,
+    pub level: u64,
     pub active: bool,
-    pub amount: u32,
+    pub amount: u64,
 }
 
 impl AsicSlot {
-    pub fn new(level: u32) -> Self {
+    pub fn new(level: u64) -> Self {
         AsicSlot {
             level,
             active: true,
             amount: 0,
         }
     }
-    pub fn add_asic(&mut self) {
-        self.amount += 1;
-    }
+
     pub fn toggle_active(&mut self) {
         self.active = !self.active;
     }
-    pub fn get_level(&self) -> u32 {
+    pub fn get_level(&self) -> u64 {
         self.level
     }
     pub fn upgrade(&mut self) {
         self.level += 1;
+        self.amount += 1;
     }
-    pub fn get_power_usage(&self) -> u32 {
+    pub fn get_power_usage(&self) -> u64 {
         if !self.active {
             return 0;
         }
-        350 * self.amount
+        1800 * self.amount
     }
-    pub fn get_hash_rate(&self) -> u32 {
+    pub fn get_hash_rate(&self) -> u64 {
         if !self.active {
             return 0;
         }
-        200 * self.amount
+        1200 * self.amount
     }
 }
 
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize, Default)]
 pub struct GpuSlot {
-    pub level: u32,
+    pub level: u64,
     pub active: bool,
-    pub amount: u32,
+    pub amount: u64,
 }
 
 impl GpuSlot {
-    pub fn new(level: u32) -> Self {
+    pub fn new(level: u64) -> Self {
         GpuSlot {
             level,
             active: true,
             amount: 0,
         }
     }
-    pub fn add_gpu(&mut self) {
-        self.amount += 1;
-    }
+
     pub fn toggle_active(&mut self) {
         self.active = !self.active;
     }
-    pub fn get_level(&self) -> u32 {
+    pub fn get_level(&self) -> u64 {
         self.level
     }
     pub fn upgrade(&mut self) {
         self.level += 1;
+        self.amount += 1;
     }
-    pub fn get_power_usage(&self) -> u32 {
+    pub fn get_power_usage(&self) -> u64 {
         if !self.active {
             return 0;
         }
-        125 * self.amount
+        500 * self.amount
     }
-    pub fn get_hash_rate(&self) -> u32 {
+    pub fn get_hash_rate(&self) -> u64 {
         if !self.active {
             return 0;
         }
-        65 * self.amount
+        225 * self.amount
     }
 }
 
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize, Default)]
 pub struct CpuSlot {
-    pub level: u32,
+    pub level: u64,
     pub active: bool,
 }
 
 impl CpuSlot {
-    pub fn new(level: u32) -> Self {
+    pub fn new(level: u64) -> Self {
         CpuSlot {
             level,
             active: true,
@@ -731,7 +717,7 @@ impl CpuSlot {
     pub fn toggle_active(&mut self) {
         self.active = !self.active;
     }
-    pub fn get_level(&self) -> u32 {
+    pub fn get_level(&self) -> u64 {
         self.level
     }
     pub fn upgrade(&mut self) {
@@ -740,16 +726,16 @@ impl CpuSlot {
             self.level += 1;
         }
     }
-    pub fn get_power_usage(&self) -> u32 {
+    pub fn get_power_usage(&self) -> u64 {
         if !self.active {
             return 0;
         }
-        25 * self.level
+        125 * self.level
     }
-    pub fn get_hash_rate(&self) -> u32 {
+    pub fn get_hash_rate(&self) -> u64 {
         if !self.active {
             return 0;
         }
-        25 * self.level
+        125 * self.level
     }
 }

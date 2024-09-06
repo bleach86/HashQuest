@@ -2,6 +2,7 @@
 use serde::{Deserialize, Serialize};
 use std::collections::VecDeque;
 use std::ops::Range;
+use wasm_bindgen_futures::spawn_local;
 
 use crate::market::{GAME_TIME, MAX_SERIES_LENGTH};
 use crate::mining_rig::MINING_RIG;
@@ -10,40 +11,40 @@ use crate::utils::{command_line_output, get_season, rand_from_range, truncate_pr
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 pub struct CryptoCoin {
     pub name: String,
-    pub initial_price: f32,
-    pub current_price: f32,
-    pub volatility: Range<f32>,
-    pub prices: Vec<f32>,
-    pub trend: f32,
+    pub initial_price: f64,
+    pub current_price: f64,
+    pub volatility: Range<f64>,
+    pub prices: Vec<f64>,
+    pub trend: f64,
     pub trend_direction: VecDeque<bool>,
     pub active: bool,
-    pub rug_pull: f32,
+    pub rug_pull: f64,
     pub index: usize,
-    pub balance: f32,
-    pub shares: f32,
-    pub hashes: f32,
-    pub hashes_per_share: f32,
-    pub blocks: u32,
-    pub shares_per_block: u32,
-    pub max_blocks: u32,
-    pub block_reward: f32,
-    pub profit_factor: f32,
-    pub berth_date: u32,
-    pub death_date: Option<u32>,
+    pub balance: f64,
+    pub shares: f64,
+    pub hashes: f64,
+    pub hashes_per_share: f64,
+    pub blocks: u64,
+    pub shares_per_block: u64,
+    pub max_blocks: u64,
+    pub block_reward: f64,
+    pub profit_factor: f64,
+    pub berth_date: u64,
+    pub death_date: Option<u64>,
     pub share_cooldown: i64,
 }
 
 impl CryptoCoin {
     pub fn new(
         name: &str,
-        initial_price: f32,
-        volatility: Range<f32>,
+        initial_price: f64,
+        volatility: Range<f64>,
         index: usize,
-        shares_per_block: u32,
-        block_reward: f32,
-        max_blocks: u32,
-        hashes_per_share: f32,
-        day: u32,
+        shares_per_block: u64,
+        block_reward: f64,
+        max_blocks: u64,
+        hashes_per_share: f64,
+        day: u64,
     ) -> Self {
         CryptoCoin {
             name: name.to_string(),
@@ -75,8 +76,8 @@ impl CryptoCoin {
         self.share_cooldown
     }
 
-    pub fn get_share_cooldown_seconds(&self) -> f32 {
-        self.share_cooldown as f32 / 20.0
+    pub fn get_share_cooldown_seconds(&self) -> f64 {
+        self.share_cooldown as f64 / 20.0
     }
 
     pub fn get_share_cooldown_ticks(&self) -> i64 {
@@ -109,51 +110,51 @@ impl CryptoCoin {
         }
     }
 
-    pub fn get_share_progress(&self) -> f32 {
-        self.hashes as f32 / self.hashes_per_share as f32
+    pub fn get_share_progress(&self) -> f64 {
+        self.hashes / self.hashes_per_share
     }
 
-    pub fn get_block_progress(&self) -> f32 {
-        self.shares as f32 / self.shares_per_block as f32
+    pub fn get_block_progress(&self) -> f64 {
+        self.shares / self.shares_per_block as f64
     }
 
-    pub fn get_difficulty(&self) -> f32 {
+    pub fn get_difficulty(&self) -> f64 {
         self.current_price / 800.0
     }
 
-    pub fn get_effective_hash(&self, hash_rate: u32) -> f32 {
-        let total_hash = hash_rate as f32;
+    pub fn get_effective_hash(&self, hash_rate: u64) -> f64 {
+        let total_hash = hash_rate as f64;
         let effective_hash = total_hash / (1.0 + self.get_difficulty());
         effective_hash
     }
 
-    fn get_share_reward(&self, hash_rate: u32) -> f32 {
+    fn get_share_reward(&self, hash_rate: u64) -> f64 {
         let effective_hash = self.get_effective_hash(hash_rate);
-        (self.block_reward / self.shares_per_block as f32)
-            * (1.0 + (effective_hash as f32 / 10000.0))
+        (self.block_reward / self.shares_per_block as f64)
+            * (1.0 + (effective_hash as f64 / 10000.0))
     }
 
-    pub fn calculate_rug_chance(&self) -> f32 {
+    pub fn calculate_rug_chance(&self) -> f64 {
         let age = self.get_age();
-        let rug_chance = 0.01 * (age as f32 / 100.0).powf(2.0);
+        let rug_chance = 0.01 * (age as f64 / 100.0).powf(2.0);
         rug_chance
     }
 
-    fn calculate_shares_per_minute(&self, hash_rate: u32) -> f32 {
-        let effective_hash: f32 = self.get_effective_hash(hash_rate);
-        let hashes_per_call: f32 = effective_hash / 4.0;
+    fn calculate_shares_per_minute(&self, hash_rate: u64) -> f64 {
+        let effective_hash: f64 = self.get_effective_hash(hash_rate);
+        let hashes_per_call: f64 = effective_hash / 4.0;
         let cooldown_ticks: i64 = self.get_share_cooldown_ticks();
-        let cooldown_seconds: f32 = cooldown_ticks as f32 / 20.0;
-        let calls_per_share: f32 = self.hashes_per_share / hashes_per_call;
+        let cooldown_seconds: f64 = cooldown_ticks as f64 / 20.0;
+        let calls_per_share: f64 = self.hashes_per_share / hashes_per_call;
 
-        let seconds_per_share: f32 = calls_per_share / 20.0;
+        let seconds_per_share: f64 = calls_per_share / 20.0;
 
-        let minutes_per_share: f32 = (seconds_per_share + cooldown_seconds) / 60.0;
-        let shares_per_minute: f32 = 1.0 / minutes_per_share;
+        let minutes_per_share: f64 = (seconds_per_share + cooldown_seconds) / 60.0;
+        let shares_per_minute: f64 = 1.0 / minutes_per_share;
         shares_per_minute
     }
 
-    fn calculate_power_cost_per_minute(&self, day: u32) -> f64 {
+    fn calculate_power_cost_per_minute(&self, day: u64) -> f64 {
         let cost_per_unit = 1.0 / get_season(day);
         let power_usage = MINING_RIG().get_power_usage() as f64;
         let usage_per_tick = power_usage / 20.0;
@@ -164,13 +165,28 @@ impl CryptoCoin {
         cost_per_minute
     }
 
-    pub fn calculate_profit_factor(&mut self, hash_rate: u32) -> f32 {
+    fn hash_divisor(&self, hash_rate: u64) -> f64 {
+        match hash_rate {
+            ..=1000 => 1.0,
+            1001..=2500 => 2.0,
+            2501..=5000 => 5.0,
+            5001..=7500 => 10.0,
+            7501..=10_000 => 25.0,
+            10_001..=25_000 => 50.0,
+            25_001..=50_000 => 100.0,
+            50_001..=75_000 => 250.0,
+            75_001..=100_000 => 500.0,
+            _ => 1000.0,
+        }
+    }
+
+    pub fn calculate_profit_factor(&mut self, hash_rate: u64) -> f64 {
         let spm = self.calculate_shares_per_minute(hash_rate);
         let coins_share = self.get_share_reward(hash_rate);
         (spm * coins_share) * self.current_price
     }
 
-    pub fn hash_coin(&mut self, hash_rate: u32) {
+    pub fn hash_coin(&mut self, hash_rate: u64) {
         let share_cooldown = self.get_share_cooldown() != 0;
 
         if self.blocks >= self.max_blocks || share_cooldown || !self.active {
@@ -180,6 +196,8 @@ impl CryptoCoin {
         let effective_hash = self.get_effective_hash(hash_rate);
         self.hashes += effective_hash / 6.0;
 
+        let mut rejected = false;
+
         while self.hashes >= self.hashes_per_share {
             self.set_share_cooldown();
 
@@ -187,26 +205,43 @@ impl CryptoCoin {
 
             if fail_chance < 0.01 {
                 self.hashes -= self.hashes_per_share;
-                let msg = format!("Share rejected for {}, boo!", self.name);
-                command_line_output(&msg);
+
+                if !rejected {
+                    let msg = format!("Share rejected for {}, boo!", self.name);
+                    spawn_local(async move {
+                        command_line_output(&msg).await;
+                    });
+                }
+
+                rejected = true;
+
                 continue;
             }
 
             self.shares += 1.0;
 
-            let msg = format!("Share accepted for {}, yay!", self.name);
-            command_line_output(&msg);
+            if self.shares % self.hash_divisor(hash_rate) == 0.0 {
+                let msg = format!(
+                    "{} shares accepted for {}, yay!",
+                    self.shares as u64, self.name
+                );
+                spawn_local(async move {
+                    command_line_output(&msg).await;
+                });
+            }
 
             self.hashes -= self.hashes_per_share;
             self.balance += self.get_share_reward(hash_rate);
 
-            if self.shares as u32 >= self.shares_per_block {
+            if self.shares as u64 >= self.shares_per_block {
                 self.blocks += 1;
 
                 let msg = format!("Block mined for {}, yay!", self.name);
-                command_line_output(&msg);
+                spawn_local(async move {
+                    command_line_output(&msg).await;
+                });
 
-                self.shares -= self.shares_per_block as f32;
+                self.shares -= self.shares_per_block as f64;
 
                 // 25% bonus for completing a block
                 self.balance += self.block_reward * 0.25;
@@ -214,7 +249,7 @@ impl CryptoCoin {
         }
     }
 
-    pub fn get_age(&self) -> u32 {
+    pub fn get_age(&self) -> u64 {
         if self.death_date.is_some() {
             return self.death_date.unwrap() - self.berth_date;
         }
@@ -241,8 +276,8 @@ impl CryptoCoin {
 
         // Periodic sawtooth pattern
         let period = 30; // Number of updates for a full cycle
-        let position = (self.prices.len() % period) as f32;
-        let sawtooth = (position / period as f32) - 0.5; // Range from -0.5 to 0.5
+        let position = (self.prices.len() % period) as f64;
+        let sawtooth = (position / period as f64) - 0.5; // Range from -0.5 to 0.5
 
         // Combine sawtooth with random change and trend
         let change_percent =
@@ -257,8 +292,8 @@ impl CryptoCoin {
         }
 
         // Seasonality effect
-        let seasonality = 0.01 * (self.prices.len() as f32 / 10.0).sin()
-            + 0.005 * (self.prices.len() as f32 / 50.0).cos();
+        let seasonality = 0.01 * (self.prices.len() as f64 / 10.0).sin()
+            + 0.005 * (self.prices.len() as f64 / 50.0).cos();
         self.current_price *= 1.0 + seasonality;
 
         // Introduce news impact
