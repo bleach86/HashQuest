@@ -884,24 +884,28 @@ pub fn RigAsicTab(selected_tab: Signal<String>) -> Element {
         }
     };
 
-    let upgrade_max = move |_| loop {
-        let cost = MINING_RIG().get_asic_upgrade_cost();
+    let upgrade_max = move |_| {
+        let mut count = 0;
 
-        let slots_available =
-            MINING_RIG().get_filled_asic_slots() < MINING_RIG().get_max_asic_slots();
+        loop {
+            let cost = MINING_RIG().get_asic_upgrade_cost();
 
-        if slots_available && MARKET.write().bank.withdraw(cost) {
-            MINING_RIG.write().upgrade_asic();
+            let slots_available =
+                MINING_RIG().get_filled_asic_slots() < MINING_RIG().get_max_asic_slots();
 
-            let asic_lvl = MINING_RIG().get_asic_level();
-
-            let msg = format!("ASIC upgrade successful, new level {asic_lvl}");
-            spawn_local(async move {
-                command_line_output(&msg).await;
-            });
-        } else {
-            DO_SAVE.write().save = true;
-            break;
+            if slots_available && MARKET.write().bank.withdraw(cost) {
+                MINING_RIG.write().upgrade_asic();
+                count += 1
+            } else {
+                if count > 0 {
+                    let msg = format!("Successfully completed {} ASIC upgrades.", count);
+                    spawn_local(async move {
+                        command_line_output(&msg).await;
+                    });
+                }
+                DO_SAVE.write().save = true;
+                break;
+            }
         }
     };
 
@@ -992,24 +996,28 @@ pub fn RigGPUTab(selected_tab: Signal<String>) -> Element {
         }
     };
 
-    let upgrade_max = move |_| loop {
-        let cost = MINING_RIG().get_gpu_upgrade_cost();
+    let upgrade_max = move |_| {
+        let mut count = 0;
+        loop {
+            let cost = MINING_RIG().get_gpu_upgrade_cost();
 
-        let slots_available =
-            MINING_RIG().get_filled_gpu_slots() < MINING_RIG().get_max_gpu_slots();
+            let slots_available =
+                MINING_RIG().get_filled_gpu_slots() < MINING_RIG().get_max_gpu_slots();
 
-        if slots_available && MARKET.write().bank.withdraw(cost) {
-            MINING_RIG.write().upgrade_gpu();
+            if slots_available && MARKET.write().bank.withdraw(cost) {
+                MINING_RIG.write().upgrade_gpu();
 
-            let gpu_lvl = MINING_RIG().get_gpu_level();
-
-            let msg = format!("GPU upgrade successful, new level {gpu_lvl}");
-            spawn_local(async move {
-                command_line_output(&msg).await;
-            });
-        } else {
-            DO_SAVE.write().save = true;
-            break;
+                count += 1;
+            } else {
+                if count > 0 {
+                    let msg = format!("Successfully completed {} GPU upgrades.", count);
+                    spawn_local(async move {
+                        command_line_output(&msg).await;
+                    });
+                }
+                DO_SAVE.write().save = true;
+                break;
+            }
         }
     };
 
