@@ -1,6 +1,6 @@
 [package]
 name = "hash-quest"
-version = "1.5.1"
+version = "1.5.2"
 authors = ["bleach86 <14421739+bleach86@users.noreply.github.com>"]
 edition = "2021"
 
@@ -34,6 +34,7 @@ web-sys = { version = "0.3.70", features = [
     "Navigator",
     "Clipboard",
     "HtmlButtonElement",
+    "ImageData",
 
 ] }
 js-sys = "0.3.69"

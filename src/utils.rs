@@ -8,6 +8,12 @@ use crate::crypto_coin::CryptoCoin;
 use crate::i_db::{get_cmd_output, set_cmd_output, CmdOutput};
 
 #[derive(Serialize, Deserialize, Clone, Debug, Default, PartialEq)]
+pub struct CanvasSize {
+    pub width: f64,
+    pub height: f64,
+}
+
+#[derive(Serialize, Deserialize, Clone, Debug, Default, PartialEq)]
 pub struct ConfirmModal {
     pub show: bool,
     pub msg: String,
@@ -148,9 +154,14 @@ impl PaintUndo {
         }
     }
 
-    pub fn calculate_score(&self) -> f64 {
+    pub fn calculate_score(&self, canvas_size: &CanvasSize) -> f64 {
         let mut score = 0.0;
         let mut unique_colors = HashSet::new();
+
+        let canvas_width = canvas_size.width;
+        let canvas_height = canvas_size.height;
+
+        let canvas_area = canvas_width * canvas_height;
 
         let background_color = if self.paths.is_empty() {
             "#ffffff".to_string()
@@ -182,6 +193,19 @@ impl PaintUndo {
             for i in 0..(path.len() - 1) {
                 let current = &path[i];
                 let next = &path[i + 1];
+
+                if current.x > canvas_width
+                    || current.y > canvas_height
+                    || next.x > canvas_width
+                    || next.y > canvas_height
+                {
+                    continue;
+                }
+
+                if current.x < 0.0 || current.y < 0.0 || next.x < 0.0 || next.y < 0.0 {
+                    continue;
+                }
+
                 let distance = ((next.x - current.x).powi(2) + (next.y - current.y).powi(2)).sqrt();
                 path_length += distance;
             }
@@ -190,6 +214,9 @@ impl PaintUndo {
         }
 
         let color_multiplier = unique_colors.len() as f64;
+
+        score = score.min(canvas_area * 20.0);
+
         score *= color_multiplier;
 
         score / 1000.0

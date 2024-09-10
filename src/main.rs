@@ -37,9 +37,9 @@ use market::{
 };
 use mining_rig::MINING_RIG;
 use utils::{
-    command_line_output, BuyModal, CatchupModal, ConfirmModal, DoSave, GalaxyLoadingModal,
-    GalaxySaveDetails, GameTime, HelpModal, ImportExportModal, PaintUndo, Paused, Position,
-    TpsCounter, WelcomeModal,
+    command_line_output, BuyModal, CanvasSize, CatchupModal, ConfirmModal, DoSave,
+    GalaxyLoadingModal, GalaxySaveDetails, GameTime, HelpModal, ImportExportModal, PaintUndo,
+    Paused, Position, TpsCounter, WelcomeModal,
 };
 
 use nft::NftStudio;
@@ -1249,15 +1249,15 @@ pub fn RigDetailsTab(selected_tab: Signal<String>) -> Element {
                 style: "justify-content: space-between;",
                 div {
                     h4 { "Mining Rig Details" }
-                    p { "Level: {MINING_RIG().get_level()}" }
+                    p { "Level: {format_comma_seperator(MINING_RIG().get_level(), 0)}" }
                     p {
                         "Power Capacity: {format_comma_seperator(MINING_RIG().get_power_capacity(), 2)}"
                     }
                     p {
-                        "GPU Slots: {MINING_RIG().get_filled_gpu_slots()} / {MINING_RIG().get_max_gpu_slots()}"
+                        "GPU Slots: {format_comma_seperator(MINING_RIG().get_filled_gpu_slots(), 0)} / {format_comma_seperator(MINING_RIG().get_max_gpu_slots(), 0)}"
                     }
                     p {
-                        "ASIC Slots: {MINING_RIG().get_filled_asic_slots()} / {MINING_RIG().get_max_asic_slots()}"
+                        "ASIC Slots: {format_comma_seperator(MINING_RIG().get_filled_asic_slots(), 0)} / {format_comma_seperator(MINING_RIG().get_max_asic_slots(), 0)}"
                     }
                     br {}
                     p { "Current Hash Rate: {format_comma_seperator(MINING_RIG().get_hash_rate(), 2)}" }
@@ -1539,18 +1539,23 @@ pub fn Paint(confirm_modal: Signal<ConfirmModal>) -> Element {
     let mut drawing_color = use_signal(|| "#000".to_string());
     let mut bg_color = use_signal(|| "#ffffff".to_string());
 
+    let mut canvas_size = use_signal(|| CanvasSize {
+        width: 0.0,
+        height: 0.0,
+    });
+
     let mut paint_undo = use_signal(|| PaintUndo::new());
     let mut line_width = use_signal(|| 3.0);
 
     // Utility function to get position from MouseEvent
     let get_mouse_position = move |e: &MouseEvent| -> Position {
         let document = window().document().unwrap();
-        let canvas = document
+        let paint_canvas = document
             .get_element_by_id("paint-canvas")
             .unwrap()
             .dyn_into::<web_sys::HtmlCanvasElement>()
             .unwrap();
-        let rect = canvas.get_bounding_client_rect();
+        let rect = paint_canvas.get_bounding_client_rect();
 
         Position {
             x: e.data.client_coordinates().x as f64 - rect.left(),
@@ -1564,13 +1569,13 @@ pub fn Paint(confirm_modal: Signal<ConfirmModal>) -> Element {
     // Utility function to get position from TouchEvent
     let get_touch_position = move |e: &TouchEvent| -> Position {
         let document = window().document().unwrap();
-        let canvas = document
+        let paint_canvas = document
             .get_element_by_id("paint-canvas")
             .unwrap()
             .dyn_into::<web_sys::HtmlCanvasElement>()
             .unwrap();
 
-        let rect = canvas.get_bounding_client_rect();
+        let rect = paint_canvas.get_bounding_client_rect();
         let touch = &e.touches()[0];
 
         Position {
@@ -1591,12 +1596,12 @@ pub fn Paint(confirm_modal: Signal<ConfirmModal>) -> Element {
         paint_undo.write().add_position(position.clone());
 
         let document = window().document().unwrap();
-        let canvas = document
+        let paint_canvas = document
             .get_element_by_id("paint-canvas")
             .unwrap()
             .dyn_into::<web_sys::HtmlCanvasElement>()
             .unwrap();
-        let context = canvas
+        let context = paint_canvas
             .get_context("2d")
             .unwrap()
             .unwrap()
@@ -1616,12 +1621,12 @@ pub fn Paint(confirm_modal: Signal<ConfirmModal>) -> Element {
         paint_undo.write().add_position(position.clone());
 
         let document = window().document().unwrap();
-        let canvas = document
+        let paint_canvas = document
             .get_element_by_id("paint-canvas")
             .unwrap()
             .dyn_into::<web_sys::HtmlCanvasElement>()
             .unwrap();
-        let context = canvas
+        let context = paint_canvas
             .get_context("2d")
             .unwrap()
             .unwrap()
@@ -1656,12 +1661,12 @@ pub fn Paint(confirm_modal: Signal<ConfirmModal>) -> Element {
         });
         if is_drawing() {
             let document = window().document().unwrap();
-            let canvas = document
+            let paint_canvas = document
                 .get_element_by_id("paint-canvas")
                 .unwrap()
                 .dyn_into::<web_sys::HtmlCanvasElement>()
                 .unwrap();
-            let context = canvas
+            let context = paint_canvas
                 .get_context("2d")
                 .unwrap()
                 .unwrap()
@@ -1679,12 +1684,12 @@ pub fn Paint(confirm_modal: Signal<ConfirmModal>) -> Element {
             let position = get_mouse_position(&e);
 
             let document = window().document().unwrap();
-            let canvas = document
+            let paint_canvas = document
                 .get_element_by_id("paint-canvas")
                 .unwrap()
                 .dyn_into::<web_sys::HtmlCanvasElement>()
                 .unwrap();
-            let context = canvas
+            let context = paint_canvas
                 .get_context("2d")
                 .unwrap()
                 .unwrap()
@@ -1711,12 +1716,12 @@ pub fn Paint(confirm_modal: Signal<ConfirmModal>) -> Element {
             let position = get_touch_position(&e);
 
             let document = window().document().unwrap();
-            let canvas = document
+            let paint_canvas = document
                 .get_element_by_id("paint-canvas")
                 .unwrap()
                 .dyn_into::<web_sys::HtmlCanvasElement>()
                 .unwrap();
-            let context = canvas
+            let context = paint_canvas
                 .get_context("2d")
                 .unwrap()
                 .unwrap()
@@ -1757,6 +1762,14 @@ pub fn Paint(confirm_modal: Signal<ConfirmModal>) -> Element {
 
         paint_canvas.set_width(paint_window_width as u32 - buffer);
 
+        let paint_canvas_height = paint_canvas.height() as f64;
+        let paint_canvas_width = paint_canvas.width() as f64;
+
+        canvas_size.set(CanvasSize {
+            width: paint_canvas_width,
+            height: paint_canvas_height,
+        });
+
         let context = paint_canvas
             .get_context("2d")
             .unwrap()
@@ -1785,6 +1798,14 @@ pub fn Paint(confirm_modal: Signal<ConfirmModal>) -> Element {
                 .dyn_into::<web_sys::HtmlCanvasElement>()
                 .unwrap();
             paint_canvas.set_width(paint_window_width as u32 - 26);
+
+            let paint_canvas_height = paint_canvas.height() as f64;
+            let paint_canvas_width = paint_canvas.width() as f64;
+
+            canvas_size.set(CanvasSize {
+                width: paint_canvas_width,
+                height: paint_canvas_height,
+            });
 
             spawn_local(async move {
                 set_canvas_background_from_local().await;
@@ -1913,7 +1934,8 @@ pub fn Paint(confirm_modal: Signal<ConfirmModal>) -> Element {
                                     bg_color: bg_color.clone(),
                                     drawing_color: drawing_color.clone(),
                                     line_width: line_width.clone(),
-                                    show_nft_mint_modal: show_nft_mint_modal.clone()
+                                    show_nft_mint_modal: show_nft_mint_modal.clone(),
+                                    canvas_size: canvas_size.clone()
                                 }
                             }
                             p {
@@ -1941,7 +1963,7 @@ pub fn Paint(confirm_modal: Signal<ConfirmModal>) -> Element {
                             }
 
                             p { style: "margin-right: 10px;padding-left: 10px;padding-right: 10px;",
-                                "Score: {format_comma_seperator(NFT_STUDIO().mint_nft_dry_run(String::new(),paint_undo().calculate_score(), GAME_TIME().day).score, 2)}"
+                                "Score: {format_comma_seperator(NFT_STUDIO().mint_nft_dry_run(String::new(),paint_undo().calculate_score(&canvas_size()), GAME_TIME().day).score, 2)}"
                             }
                         }
                     }
@@ -1958,7 +1980,9 @@ pub fn Paint(confirm_modal: Signal<ConfirmModal>) -> Element {
                         ProgressBar { progress_id: "paint-progress".to_string(), progress_message: "".to_string() }
 
                         div { style: "text-align: center;margin-top: 10px;",
-                            p { "{NFT_STUDIO().hype:.2} / {NFT_STUDIO().next_rep():.0}" }
+                            p {
+                                "{format_comma_seperator(NFT_STUDIO().hype, 0)} / {format_comma_seperator(NFT_STUDIO().next_rep(), 0)}"
+                            }
                         }
 
                         h4 { "Popularity" }
@@ -2072,7 +2096,8 @@ pub fn Paint(confirm_modal: Signal<ConfirmModal>) -> Element {
                     bg_color: bg_color.clone(),
                     drawing_color: drawing_color.clone(),
                     line_width: line_width.clone(),
-                    confirm_modal: confirm_modal.clone()
+                    confirm_modal: confirm_modal.clone(),
+                    canvas_size: canvas_size.clone()
                 }
             }
         }
@@ -2183,11 +2208,12 @@ pub fn PaintFileMenuDropdown(
     drawing_color: Signal<String>,
     line_width: Signal<f64>,
     show_nft_mint_modal: Signal<bool>,
+    canvas_size: Signal<CanvasSize>,
 ) -> Element {
     let print_to_nft = move || async move {
         let nft = NFT_STUDIO().mint_nft_dry_run(
             "test".to_string(),
-            paint_undo().calculate_score(),
+            paint_undo().calculate_score(&canvas_size()),
             GAME_TIME().day,
         );
 
@@ -2255,12 +2281,13 @@ pub fn NftMintModal(
     drawing_color: Signal<String>,
     line_width: Signal<f64>,
     confirm_modal: Signal<ConfirmModal>,
+    canvas_size: Signal<CanvasSize>,
 ) -> Element {
     let save_paint = move || {
         let win = window();
         let document = win.document().unwrap();
 
-        let canvas = document
+        let paint_canvas = document
             .get_element_by_id("paint-canvas")
             .unwrap()
             .dyn_into::<web_sys::HtmlCanvasElement>()
@@ -2268,7 +2295,7 @@ pub fn NftMintModal(
 
         let save_img = document.get_element_by_id("save-img").unwrap();
 
-        let save_opt = dump_canvas_to_image(&canvas);
+        let save_opt = dump_canvas_to_image(&paint_canvas);
 
         match save_opt {
             Some(save) => {
@@ -2282,7 +2309,7 @@ pub fn NftMintModal(
 
     let nft = NFT_STUDIO().mint_nft_dry_run(
         "test".to_string(),
-        paint_undo().calculate_score(),
+        paint_undo().calculate_score(&canvas_size()),
         GAME_TIME().day,
     );
 
@@ -2322,7 +2349,7 @@ pub fn NftMintModal(
             return;
         }
 
-        let score = paint_undo().calculate_score();
+        let score = paint_undo().calculate_score(&canvas_size());
 
         let day = GAME_TIME().day;
 
@@ -2403,7 +2430,7 @@ pub fn PaintSaveModal(show_paint_save_modal: Signal<bool>) -> Element {
         let win = window();
         let document = win.document().unwrap();
 
-        let canvas = document
+        let paint_canvas = document
             .get_element_by_id("paint-canvas")
             .unwrap()
             .dyn_into::<web_sys::HtmlCanvasElement>()
@@ -2411,7 +2438,7 @@ pub fn PaintSaveModal(show_paint_save_modal: Signal<bool>) -> Element {
 
         let save_img = document.get_element_by_id("save-img").unwrap();
 
-        let save_opt = dump_canvas_to_image(&canvas);
+        let save_opt = dump_canvas_to_image(&paint_canvas);
 
         match save_opt {
             Some(save) => {
@@ -2466,13 +2493,13 @@ fn set_canvas_background(color: &str, paint_undo: Signal<PaintUndo>) {
     let win = window();
     let document = win.document().unwrap();
 
-    let canvas = document
+    let paint_canvas = document
         .get_element_by_id("paint-canvas")
         .unwrap()
         .dyn_into::<web_sys::HtmlCanvasElement>()
         .unwrap();
 
-    let context = canvas
+    let context = paint_canvas
         .get_context("2d")
         .unwrap()
         .unwrap()
@@ -2480,7 +2507,12 @@ fn set_canvas_background(color: &str, paint_undo: Signal<PaintUndo>) {
         .unwrap();
 
     context.set_fill_style(&JsValue::from_str(color));
-    context.fill_rect(0.0, 0.0, canvas.width() as f64, canvas.height() as f64);
+    context.fill_rect(
+        0.0,
+        0.0,
+        paint_canvas.width() as f64,
+        paint_canvas.height() as f64,
+    );
 
     paint_undo().paths.iter().for_each(|path| {
         if !path.is_empty() {
@@ -2512,13 +2544,13 @@ async fn set_canvas_background_from_local() {
     let win = window();
     let document = win.document().unwrap();
 
-    let canvas = document
+    let paint_canvas = document
         .get_element_by_id("paint-canvas")
         .unwrap()
         .dyn_into::<web_sys::HtmlCanvasElement>()
         .unwrap();
 
-    let context = canvas
+    let context = paint_canvas
         .get_context("2d")
         .unwrap()
         .unwrap()
@@ -2534,7 +2566,12 @@ async fn set_canvas_background_from_local() {
     };
 
     context.set_fill_style(&JsValue::from_str(&last_bg_color));
-    context.fill_rect(0.0, 0.0, canvas.width() as f64, canvas.height() as f64);
+    context.fill_rect(
+        0.0,
+        0.0,
+        paint_canvas.width() as f64,
+        paint_canvas.height() as f64,
+    );
 
     paint_undo.paths.iter().for_each(|path| {
         if !path.is_empty() {
@@ -2561,13 +2598,13 @@ fn set_canvas_background_last(
     let win = window();
     let document = win.document().unwrap();
 
-    let canvas = document
+    let paint_canvas = document
         .get_element_by_id("paint-canvas")
         .unwrap()
         .dyn_into::<web_sys::HtmlCanvasElement>()
         .unwrap();
 
-    let context = canvas
+    let context = paint_canvas
         .get_context("2d")
         .unwrap()
         .unwrap()
@@ -2587,7 +2624,12 @@ fn set_canvas_background_last(
     };
 
     context.set_fill_style(&JsValue::from_str(&last_bg_color));
-    context.fill_rect(0.0, 0.0, canvas.width() as f64, canvas.height() as f64);
+    context.fill_rect(
+        0.0,
+        0.0,
+        paint_canvas.width() as f64,
+        paint_canvas.height() as f64,
+    );
 
     paint_undo().paths.iter().for_each(|path| {
         if !path.is_empty() {
@@ -2636,19 +2678,24 @@ async fn clear_canvas(
     line_width: &mut Signal<f64>,
 ) {
     let document = window().document().unwrap();
-    let canvas = document
+    let paint_canvas = document
         .get_element_by_id("paint-canvas")
         .unwrap()
         .dyn_into::<web_sys::HtmlCanvasElement>()
         .unwrap();
-    let context = canvas
+    let context = paint_canvas
         .get_context("2d")
         .unwrap()
         .unwrap()
         .dyn_into::<web_sys::CanvasRenderingContext2d>()
         .unwrap();
 
-    context.clear_rect(0.0, 0.0, canvas.width() as f64, canvas.height() as f64);
+    context.clear_rect(
+        0.0,
+        0.0,
+        paint_canvas.width() as f64,
+        paint_canvas.height() as f64,
+    );
     paint_undo.write().clear();
 
     set_paint_undo(&paint_undo().clone()).await;
@@ -2804,7 +2851,11 @@ pub fn Header(ticks_per_second: Signal<TpsCounter>, selected_tab: Signal<String>
             None => 0,
         };
 
-        format!("{blocks} / {max_blocks}")
+        format!(
+            "{} / {}",
+            format_comma_seperator(blocks, 0),
+            format_comma_seperator(max_blocks, 0)
+        )
     };
 
     let get_shares = {
@@ -2838,7 +2889,11 @@ pub fn Header(ticks_per_second: Signal<TpsCounter>, selected_tab: Signal<String>
             None => 0,
         };
 
-        format!("{shares:.0} / {shares_per_block:.0}")
+        format!(
+            "{} / {}",
+            format_comma_seperator(shares, 0),
+            format_comma_seperator(shares_per_block, 0)
+        )
     };
 
     let show_help_modal = {
@@ -4101,7 +4156,7 @@ pub fn GalaxyLoadingModal() -> Element {
             div { class: "backdrop" }
             // Modal content
             div {
-                class: "window modal container m-3 overflow-hidden h-fit",
+                class: "window modal pauseModal",
                 style: "max-width: 350px;min-width:225px;",
                 div { class: "title-bar",
                     div { class: "title-bar-text", "Copying..." }
@@ -4417,6 +4472,10 @@ async fn do_mining() {
     let mut sel = SELECTION.write().clone();
 
     let selected_coins = sel.get_selected();
+
+    if selected_coins.is_empty() {
+        return;
+    }
 
     let mut mkt = MARKET.write();
 
@@ -5032,8 +5091,8 @@ async fn recover_game_state(
     return true;
 }
 
-fn dump_canvas_to_image(canvas: &web_sys::HtmlCanvasElement) -> Option<String> {
-    let data_url = canvas.to_data_url_with_type("image/png").ok()?;
+fn dump_canvas_to_image(paint_canvas: &web_sys::HtmlCanvasElement) -> Option<String> {
+    let data_url = paint_canvas.to_data_url_with_type("image/png").ok()?;
 
     Some(data_url)
 }
