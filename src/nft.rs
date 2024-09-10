@@ -42,7 +42,7 @@ impl Nft {
             36..=59 => score * (250.0 + ((studio_rep as f64 - 35.0) * 35.0)),
             60..=99 => score * (1200.25 + ((studio_rep as f64 - 59.0) * 15.0)),
             100..=149 => score * (2000.5 + ((studio_rep as f64 - 99.0) * 15.0)),
-            _ => score * 3000.0,
+            _ => score * 3000.0 + ((studio_rep as f64 - 149.0) * 25.0),
         }
     }
 
@@ -61,7 +61,7 @@ impl Nft {
             36..=59 => score * (15.5 + ((studio_rep as f64 - 35.0) * 0.18)),
             60..=99 => score * (20.75 + ((studio_rep as f64 - 59.0) * 0.18)),
             100..=149 => score * (30.0 + ((studio_rep as f64 - 99.0) * 0.30)),
-            _ => score * 50.0,
+            _ => score * 50.0 + ((studio_rep as f64 - 149.0) * 0.50),
         };
 
         calc_score

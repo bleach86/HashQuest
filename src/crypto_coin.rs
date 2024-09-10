@@ -180,6 +180,21 @@ impl CryptoCoin {
         }
     }
 
+    fn hash_divisor_blocks(&self, hash_rate: u64) -> u64 {
+        match hash_rate {
+            ..=100_000 => 1,
+            100_001..=250_000 => 2,
+            250_001..=500_000 => 5,
+            500_001..=750_000 => 10,
+            750_001..=1_000_000 => 25,
+            1_000_001..=2_500_000 => 50,
+            2_500_001..=5_000_000 => 100,
+            5_000_001..=7_500_000 => 250,
+            7_500_001..=10_000_000 => 500,
+            _ => 1000,
+        }
+    }
+
     pub fn calculate_profit_factor(&mut self, hash_rate: u64) -> f64 {
         let spm = self.calculate_shares_per_minute(hash_rate);
         let coins_share = self.get_share_reward(hash_rate);
@@ -196,31 +211,14 @@ impl CryptoCoin {
         let effective_hash = self.get_effective_hash(hash_rate);
         self.hashes += effective_hash / 6.0;
 
-        let mut rejected = false;
-
         while self.hashes >= self.hashes_per_share {
             self.set_share_cooldown();
 
-            let fail_chance = rand_from_range(0.0..1.0);
-
-            if fail_chance < 0.01 {
-                self.hashes -= self.hashes_per_share;
-
-                if !rejected {
-                    let msg = format!("Share rejected for {}, boo!", self.name);
-                    spawn_local(async move {
-                        command_line_output(&msg).await;
-                    });
-                }
-
-                rejected = true;
-
-                continue;
-            }
-
             self.shares += 1.0;
 
-            if self.shares % self.hash_divisor(hash_rate) == 0.0 {
+            let share_divisor = self.hash_divisor(hash_rate);
+
+            if share_divisor < 1000.0 && self.shares % share_divisor == 0.0 {
                 let msg = format!(
                     "{} shares accepted for {}, yay!",
                     self.shares as u64, self.name
@@ -236,10 +234,12 @@ impl CryptoCoin {
             if self.shares as u64 >= self.shares_per_block {
                 self.blocks += 1;
 
-                let msg = format!("Block mined for {}, yay!", self.name);
-                spawn_local(async move {
-                    command_line_output(&msg).await;
-                });
+                if self.blocks % self.hash_divisor_blocks(hash_rate) == 0 {
+                    let msg = format!("Block {} mined for {}, yay!", self.blocks, self.name);
+                    spawn_local(async move {
+                        command_line_output(&msg).await;
+                    });
+                }
 
                 self.shares -= self.shares_per_block as f64;
 
