@@ -211,12 +211,13 @@ impl CryptoCoin {
         let effective_hash = self.get_effective_hash(hash_rate);
         self.hashes += effective_hash / 6.0;
 
-        while self.hashes >= self.hashes_per_share {
-            self.set_share_cooldown();
-
-            self.shares += 1.0;
+        let new_shares = (self.hashes / self.hashes_per_share).floor();
+        if new_shares >= 1.0 {
+            self.hashes -= self.hashes_per_share * new_shares;
+            self.shares += new_shares;
 
             let share_divisor = self.hash_divisor(hash_rate);
+            self.balance += self.get_share_reward(hash_rate) * new_shares;
 
             if share_divisor < 1000.0 && self.shares % share_divisor == 0.0 {
                 let msg = format!(
@@ -227,25 +228,22 @@ impl CryptoCoin {
                     command_line_output(&msg).await;
                 });
             }
+        }
 
-            self.hashes -= self.hashes_per_share;
-            self.balance += self.get_share_reward(hash_rate);
+        let new_blocks = (self.shares / self.shares_per_block as f64).floor();
+        if new_blocks >= 1.0 {
+            self.shares -= self.shares_per_block as f64 * new_blocks;
+            self.blocks += new_blocks as u64;
 
-            if self.shares as u64 >= self.shares_per_block {
-                self.blocks += 1;
-
-                if self.blocks % self.hash_divisor_blocks(hash_rate) == 0 {
-                    let msg = format!("Block {} mined for {}, yay!", self.blocks, self.name);
-                    spawn_local(async move {
-                        command_line_output(&msg).await;
-                    });
-                }
-
-                self.shares -= self.shares_per_block as f64;
-
-                // 25% bonus for completing a block
-                self.balance += self.block_reward * 0.25;
+            if self.blocks % self.hash_divisor_blocks(hash_rate) == 0 {
+                let msg = format!("Block {} mined for {}, yay!", self.blocks, self.name);
+                spawn_local(async move {
+                    command_line_output(&msg).await;
+                });
             }
+
+            // 25% bonus for completing a block
+            self.balance += self.block_reward * 0.25 * new_blocks;
         }
     }
 
