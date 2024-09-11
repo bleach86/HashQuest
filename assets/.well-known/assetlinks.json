@@ -1,0 +1,8 @@
+[{
+      "relation": ["delegate_permission/common.handle_all_urls"],
+      "target": {
+        "namespace": "android_app",
+        "package_name": "lol.hashquest.twa",
+        "sha256_cert_fingerprints": ["EF:7B:56:17:0A:E3:C3:EE:90:58:6D:91:2D:6D:BA:40:29:51:E3:F9:98:AD:5F:D6:E4:8C:25:CC:7F:0E:D4:8D"]
+      }
+    }]
