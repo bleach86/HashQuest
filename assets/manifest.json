@@ -17,14 +17,18 @@
     "display": "standalone",
     "display_override": [
         "window-control-overlay",
-        "standalone"
+        "standalone",
+        "window-controls-overlay"
     ],
     "scope": "/",
-    "theme_color": "silver",
+    "theme_color": "#C0C0C0",
     "background_color": "#008080",
     "short_name": "HashQuest",
     "description": "HashQuest is an idle game where you mine for cryptocurrency and build up your empire.",
     "dir": "ltr",
     "lang": "en",
-    "orientation": "portrait"
+    "orientation": "portrait",
+    "categories": [
+        "games"
+    ]
 }
