@@ -3035,7 +3035,7 @@ pub fn WelcomeModal() -> Element {
             div { class: "backdrop" }
             // Modal content
             div {
-                class: "window modal container m-3 overflow-hidden h-fit",
+                class: "window modal pauseModal",
                 style: "max-width: 350px;min-width:225px;",
                 div { class: "title-bar",
                     div { class: "title-bar-text", "Welcome" }
