@@ -5,7 +5,9 @@
 /* A version number is useful when updating the worker logic,
    allowing you to remove outdated cache entries during the update.
 */
-var version = "v1.0.0::";
+var version = "v1.5.5::";
+
+console.log("WORKER: executing.", version);
 
 /* These resources will be downloaded and cached by the service worker
    during the installation process. If any resource fails to be downloaded,
