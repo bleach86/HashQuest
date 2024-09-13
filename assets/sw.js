@@ -7,8 +7,6 @@
 */
 var version = "v1.5.5::";
 
-console.log("WORKER: executing.", version);
-
 /* These resources will be downloaded and cached by the service worker
    during the installation process. If any resource fails to be downloaded,
    then the service worker won't be installed either.
