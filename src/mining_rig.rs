@@ -69,9 +69,7 @@ pub struct Bank {
 
 impl Bank {
     pub fn new() -> Self {
-        Bank {
-            balance: 100_000_000_000.0,
-        }
+        Bank { balance: 0.0 }
     }
 
     pub fn deposit(&mut self, amount: f64) {
@@ -118,7 +116,7 @@ pub struct MiningRig {
 impl MiningRig {
     pub fn new() -> Self {
         MiningRig {
-            level: 165,
+            level: 1,
             power_capacity: 500.0,
             available_power: 0.0,
             cpu_slot: CpuSlot::new(1),
