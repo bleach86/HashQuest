@@ -281,7 +281,9 @@ fn Coins(
     let profit_value = |coin: &CryptoCoin| {
         let pf = coin.profit_factor;
 
-        if pf >= 1_000_000.0 {
+        if pf >= 999_999_999.9 {
+            format!("{:+.2e}", pf)
+        } else if pf >= 1_000_000.0 {
             format_comma_seperator(pf, 0)
         } else {
             format_comma_seperator(pf, 2)
