@@ -200,7 +200,7 @@ fn App() -> Element {
 
     rsx! {
         link { rel: "stylesheet", href: "/98css/98.css" }
-        link { rel: "stylesheet", href: "main.css?v=1.1" }
+        link { rel: "stylesheet", href: "main.css?v=1.2" }
         div {
             id: "content",
             class: "flex flex-col items-center justify-center relative",
@@ -4098,7 +4098,7 @@ pub fn CatchupModal() -> Element {
                             div { class: "folder" }
                             div { class: "paper",
 
-                                img { src: "/file_windows-2.png" }
+                                img { src: "/result-right-icon.webp" }
                             }
                             div { class: "folder" }
                         }
@@ -4159,7 +4159,7 @@ pub fn GalaxyLoadingModal() -> Element {
             // Modal content
             div {
                 class: "window modal pauseModal",
-                style: "max-width: 350px;min-width:225px;",
+                style: "max-width: 350px;min-width:225px;width:95%;",
                 div { class: "title-bar",
                     div { class: "title-bar-text", "Copying..." }
                     div { class: "title-bar-controls",
@@ -4173,7 +4173,7 @@ pub fn GalaxyLoadingModal() -> Element {
                             div { class: "folder" }
                             div { class: "paper",
 
-                                img { src: "/file_windows-2.png" }
+                                img { src: "/reshot-icon-paper-96EBF2MYHZ.svg" }
                             }
                             div { class: "folder" }
                         }
