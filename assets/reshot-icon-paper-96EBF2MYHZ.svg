@@ -1,0 +1,14 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 25 25">
+  <defs>
+    <style>.cls-1{fill:#231f20;}</style>
+  </defs>
+  <g id="paper">
+    <!-- White background shape within the lines, accounting for the dog ear -->
+    <path d="M4 2 H17.5 L19 3.5 V18 H14.23 V23 H4 V2 Z" fill="#ffffff"/>
+    <path class="cls-1" d="M19.5,1H3.5a.5.5,0,0,0-.5.5v22a.5.5,0,0,0,.5.5H14.21a.49.49,0,0,0,.46-.3l5.17-4.84a.52.52,0,0,0,.16-.37V1.5A.5.5,0,0,0,19.5,1ZM4,2H19V17.78H14.23a.5.5,0,0,0-.5.5V23H4ZM18.46,18.78l-3.74,3.51V18.78Z"/>
+    <path class="cls-1" d="M6.5,6h7a.5.5,0,0,0,0-1h-7a.5.5,0,0,0,0,1Z"/>
+    <path class="cls-1" d="M6.5,9h8a.5.5,0,0,0,0-1h-8a.5.5,0,0,0,0,1Z"/>
+    <path class="cls-1" d="M11.5,14h-5a.5.5,0,0,0,0,1h5a.5.5,0,0,0,0-1Z"/>
+    <path class="cls-1" d="M6.5,12h10a.5.5,0,0,0,0-1H6.5a.5.5,0,0,0,0,1Z"/>
+  </g>
+</svg>

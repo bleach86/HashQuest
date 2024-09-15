@@ -242,7 +242,8 @@ input[type="radio"] {
 .folder {
   width: 35px;
   height: 35px;
-  background-image: url("/directory_closed_cool-3.png");
+  background-image: url("/file-manager-icon.svg");
+  background-repeat: no-repeat;
   position: relative;
   border-radius: 3px;
 }
@@ -276,7 +277,7 @@ input[type="radio"] {
   height: auto;
   background-color: transparent;
   position: absolute;
-  top: 5px;
+  top: -10px;
   left: 30px;
   animation: movePaper 3s infinite;
   transform-origin: center;
