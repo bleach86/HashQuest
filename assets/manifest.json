@@ -12,6 +12,32 @@
             "type": "image/png"
         }
     ],
+    "screenshots": [
+        {
+            "src": "/screenshot0.png",
+            "sizes": "1520x3040",
+            "type": "image/png",
+            "form_factor": "narrow"
+        },
+        {
+            "src": "/screenshot1.png",
+            "sizes": "1520x3040",
+            "type": "image/png",
+            "form_factor": "narrow"
+        },
+        {
+            "src": "/screenshot2.png",
+            "sizes": "1520x3040",
+            "type": "image/png",
+            "form_factor": "narrow"
+        },
+        {
+            "src": "/screenshot3.png",
+            "sizes": "1520x3040",
+            "type": "image/png",
+            "form_factor": "narrow"
+        }
+    ],
     "start_url": "/",
     "id": "/",
     "display": "standalone",

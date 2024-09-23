@@ -3295,6 +3295,18 @@ pub fn Modal(confirm_modal: Signal<ConfirmModal>) -> Element {
 
                         br {}
 
+                        p {
+                            span { "Now available on " }
+                            a {
+                                href: "https://play.google.com/store/apps/details?id=lol.hashquest.twa",
+                                target: "_blank",
+                                style: "text-decoration:underline;",
+                                "Google Play"
+                            }
+                        }
+
+                        br {}
+
                         if GALAXY_SAVE_DETAILS().is_some() {
                             div { class: "flex flex-col",
                                 div {
