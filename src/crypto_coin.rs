@@ -230,7 +230,11 @@ impl CryptoCoin {
             }
         }
 
-        let new_blocks = (self.shares / self.shares_per_block as f64).floor();
+        let mut new_blocks = (self.shares / self.shares_per_block as f64).floor();
+        let max_new_blocks = (self.max_blocks - self.blocks) as f64;
+
+        new_blocks = new_blocks.min(max_new_blocks).floor();
+
         if new_blocks >= 1.0 {
             self.shares -= self.shares_per_block as f64 * new_blocks;
             self.blocks += new_blocks as u64;

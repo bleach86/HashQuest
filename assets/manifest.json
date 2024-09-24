@@ -56,5 +56,6 @@
     "orientation": "portrait",
     "categories": [
         "games"
-    ]
+    ],
+    "edge_side_panel": {}
 }
