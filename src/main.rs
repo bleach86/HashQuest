@@ -3058,7 +3058,7 @@ pub fn WelcomeModal() -> Element {
 
                         p { "HashQuest is a cryptocurrency mining simulation game." }
                         p { "You will start with a basic click powered mining rig." }
-                        p { "You can upgrade your rig with new gear to mine more cois faster." }
+                        p { "You can upgrade your rig with new gear to mine more coins faster." }
                         p { "Before long you will be the Hash Rate Lord!" }
 
                         br {}
