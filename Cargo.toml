@@ -1,6 +1,6 @@
 [package]
 name = "hash-quest"
-version = "1.5.9"
+version = "1.5.10"
 authors = ["bleach86 <14421739+bleach86@users.noreply.github.com>"]
 edition = "2021"
 
@@ -53,3 +53,13 @@ codegen-units = 1
 panic = "abort"
 strip = true
 incremental = false
+
+[profile.wasm-dev]
+inherits = "dev"
+opt-level = 1
+
+[profile.server-dev]
+inherits = "dev"
+
+[profile.android-dev]
+inherits = "dev"
